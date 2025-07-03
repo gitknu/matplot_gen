@@ -22,65 +22,42 @@
             --header-bg-color: #f8f9fa;
             --row-hover-color: #eff5fc;
         }
-
-        /* Universal box-sizing for more predictable and robust layouts */
-        html {
-            box-sizing: border-box;
-        }
-        *, *:before, *:after {
-            box-sizing: inherit;
-        }
-
-        /* Ensure html and body fill the viewport without causing overflow */
-        html, body {
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; 
-        }
-
         body {
             font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
             background-color: var(--background-color);
             color: var(--text-color);
+            height: 100vh;
+            overflow: hidden; 
         }
-
         .main-container {
             display: flex;
-            height: 100%; 
+            height: 100vh;
             width: 100%;
         }
-
-        #left-pane {
-            width: 40%;
-            flex-shrink: 0;
-            background-color: var(--container-bg-color);
+        #left-pane, #right-pane {
             height: 100%;
             overflow-y: auto; 
             padding: 20px;
+            box-sizing: border-box;
         }
-
-        /* The right pane is now a grid container to robustly manage its content */
+        #left-pane {
+            flex: 0 0 40%;
+            background-color: var(--container-bg-color);
+        }
         #right-pane {
-            width: 60%;
-            flex-shrink: 0;
+            flex: 1; /* Allow this pane to flexibly take up the remaining space */
             border-left: 2px solid var(--border-color);
-            height: 100%;
-            padding: 20px; /* Padding is applied directly to the pane */
-            display: grid; /* Use grid for more reliable sizing */
-            grid-template-rows: 1fr;
-            grid-template-columns: 1fr;
-            overflow: hidden; /* Prevent any possible overflow from this pane */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* IMPORTANT: We need position relative for child absolute positioning if needed */
+            position: relative; 
         }
-        
-        /* The intermediate plot-container has been removed */
-
         #plot-div {
             width: 100%;
             height: 100%;
-            min-height: 0; /* Critical fix for grid layout to prevent content overflow */
-            min-width: 0; /* Critical fix for grid layout */
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -88,7 +65,6 @@
             font-size: 1.2em;
             color: #777;
             text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         h2 {
             margin-top: 0;
@@ -188,7 +164,6 @@
             </div>
         </div>
         <div id="right-pane">
-            <!-- The intermediate wrapper has been removed for a simpler, more robust layout -->
             <div id="plot-div">
             </div>
         </div>
@@ -201,7 +176,6 @@
             const plotDiv = document.getElementById('plot-div');
             const addRowBtn = document.getElementById('add-row-btn');
             const addColBtn = document.getElementById('add-col-btn');
-
             function initialize() {
                 const initialHeaders = ["X-Axis", "Y-Axis"];
                 const initialData = [
@@ -214,7 +188,6 @@
                 updatePlot();
                 setupEventListeners();
             }
-
             function setupEventListeners() {
                 addRowBtn.addEventListener('click', () => {
                     createRow();
@@ -225,14 +198,11 @@
                     createColumn();
                     updatePlot();
                 });
-
                 table.addEventListener('input', (e) => {
                     if (e.target.matches('[contenteditable="true"]')) {
-                        // Use a short timeout to allow the DOM to update before plotting
                         setTimeout(updatePlot, 50);
                     }
                 });
-
                 table.addEventListener('click', (e) => {
                     if (e.target.matches('.delete-row-btn, .delete-row-btn *')) {
                         deleteRow(e.target.closest('tr'));
@@ -241,14 +211,10 @@
                         deleteColumn(e.target.closest('th').cellIndex);
                     }
                 });
-                
-                // Plotly's {responsive: true} config handles window resizing automatically and efficiently.
+                window.addEventListener('resize', () => {
+                    requestAnimationFrame(updatePlot);
+                });
             }
-
-            /**
-             * Creates a new column in the table.
-             * @param {string} [headerText="New Column"] - The text for the new header cell. 
-             */
             function createColumn(headerText = "New Column") {
                 const th = document.createElement('th');
                 th.setAttribute('contenteditable', 'true');
@@ -258,24 +224,15 @@
                 deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
                 th.appendChild(deleteBtn);
                 thead.appendChild(th);
-
-                // Add a corresponding cell to each existing row
                 for (const row of tbody.rows) {
                     const td = document.createElement('td');
                     td.setAttribute('contenteditable', 'true');
                     td.textContent = '0';
-                    // Insert before the last cell, which is the delete button cell
                     row.insertBefore(td, row.cells[row.cells.length - 1]);
                 }
             }
-
-            /**
-             * Deletes a column from the table by its index.
-             * @param {number} colIndex - The index of the column to delete. 
-             */
             function deleteColumn(colIndex) {
                 if (thead.cells.length <= 1) {
-                    // Show a temporary message instead of an alert
                     const modal = document.createElement('div');
                     modal.textContent = 'You must have at least one column.';
                     Object.assign(modal.style, { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: 'var(--danger-color)', color: 'white', padding: '10px 20px', borderRadius: '5px', zIndex: 1000 });
@@ -289,11 +246,6 @@
                 }
                 updatePlot();
             }
-
-            /**
-             * Creates a new row in the table.
-             * @param {Array<number|string>} [rowData=[]] - An array of data for the new row.
-             */
             function createRow(rowData = []) {
                 const tr = tbody.insertRow();
                 const colCount = thead.cells.length;
@@ -302,71 +254,56 @@
                     td.setAttribute('contenteditable', 'true');
                     td.textContent = rowData[i] !== undefined ? rowData[i] : '0';
                 }
-                // Add a final cell for the delete button
                 const deleteCell = tr.insertCell();
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn delete-row-btn';
                 deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
                 deleteCell.appendChild(deleteBtn);
-                // Style the action cell to be unobtrusive
-                deleteCell.style.border = 'none'; 
+                deleteCell.style.border = 'none';
                 deleteCell.style.background = 'none';
             }
-
-            /**
-             * Deletes a specific row element from the table.
-             * @param {HTMLTableRowElement} rowElement - The <tr> element to be deleted. 
-             */
             function deleteRow(rowElement) {
                 rowElement.remove();
                 updatePlot();
             }
-
-            /**
-             * Parses the HTML table to extract headers and data.
-             * @returns {{headers: string[], data: Array<Array<number>>}} An object containing headers and data. 
-             */
             function parseTable() {
                 const headers = Array.from(thead.cells).map(th => {
-                    // Clone the header to avoid modifying the live DOM when removing the button
                     const thClone = th.cloneNode(true);
                     const btn = thClone.querySelector('.delete-col-btn');
                     if (btn) btn.remove();
                     return thClone.textContent.trim();
                 });
-
                 const data = Array.from(tbody.rows).map(row => {
-                    // Get all cells except for the last one (which holds the delete button)
                     const dataCells = Array.from(row.cells).slice(0, -1);
                     return dataCells.map(cell => {
                         const value = parseFloat(cell.textContent);
-                        return isNaN(value) ? 0 : value; // Default non-numeric values to 0
+                        return isNaN(value) ? 0 : value;
                     });
                 });
                 
                 return { headers, data };
             }
-
-            /**
-             * Updates the plot based on the current data in the table.
-             * Handles 1D, 2D, and 3D plots automatically.
-             */
             function updatePlot() {
                 const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
                 const { headers, data } = parseTable();
                 const numCols = headers.length;
-
                 Plotly.purge(plotDiv);
-                plotDiv.innerHTML = ''; // Clear previous content
-
+                plotDiv.innerHTML = '';
                 if (numCols === 0 || data.length === 0) {
                     plotDiv.textContent = 'Please add columns and rows with data to generate a plot.';
                     return;
                 }
-
                 let plotData = [];
+                
+                // *** THE CRITICAL FIX IS HERE ***
+                // We get the exact, current dimensions of the container div.
+                const plotContainerRect = plotDiv.getBoundingClientRect();
+
                 let layout = {
                     title: 'Data Plot',
+                    // And we explicitly set the plot size to match its container.
+                    width: plotContainerRect.width,
+                    height: plotContainerRect.height,
                     margin: { t: 40, l: 50, r: 20, b: 50 },
                     paper_bgcolor: 'var(--container-bg-color)',
                     plot_bgcolor: 'var(--container-bg-color)',
@@ -375,9 +312,8 @@
                         color: 'var(--text-color)'
                     }
                 };
-
                 switch (numCols) {
-                    case 1: // 1D Plot (Line Chart)
+                    case 1:
                         plotData = [{
                             y: data.map(row => row[0]),
                             x: data.map((_, i) => i), 
@@ -390,7 +326,7 @@
                         layout.xaxis = { title: 'Index' };
                         layout.yaxis = { title: headers[0] };
                         break;
-                    case 2: // 2D Scatter Plot
+                    case 2:
                         plotData = [{
                             x: data.map(row => row[0]),
                             y: data.map(row => row[1]),
@@ -404,7 +340,7 @@
                         layout.xaxis = { title: headers[0] };
                         layout.yaxis = { title: headers[1] };
                         break;
-                    case 3: // 3D Scatter Plot
+                    case 3:
                         plotData = [{
                             x: data.map(row => row[0]),
                             y: data.map(row => row[1]),
@@ -412,7 +348,7 @@
                             mode: 'markers',
                             type: 'scatter3d',
                             marker: { 
-                                color: data.map(row => row[2]), // Color by Z-value
+                                color: data.map(row => row[2]), 
                                 colorscale: 'Viridis',
                                 size: 8
                             }
@@ -423,16 +359,14 @@
                             zaxis: { title: headers[2] }
                         };
                         break;
-                    default: // More than 3 columns
+                    default:
                         plotDiv.textContent = 'Plotting is supported for 1, 2, or 3 columns only.';
                         return; 
                 }
-
-                // Create the plot with a responsive configuration
+                // The `responsive: true` config is now a fallback for window resizing,
+                // while our explicit width/height handles the initial layout correctly.
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
             }
-
-            // Start the application
             initialize();
         });
     </script>
