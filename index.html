@@ -56,8 +56,9 @@
             justify-content: center;
         }
         #plot-div {
-            width: 100%;
-            height: 100%;
+            /* Changed width and height to prevent overflow from box-shadow */
+            width: 98%;
+            height: 98%;
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -177,6 +178,7 @@
             const plotDiv = document.getElementById('plot-div');
             const addRowBtn = document.getElementById('add-row-btn');
             const addColBtn = document.getElementById('add-col-btn');
+
             function initialize() {
                 const initialHeaders = ["X-Axis", "Y-Axis"];
                 const initialData = [
@@ -189,6 +191,7 @@
                 updatePlot();
                 setupEventListeners();
             }
+
             function setupEventListeners() {
                 addRowBtn.addEventListener('click', () => {
                     createRow();
@@ -199,11 +202,14 @@
                     createColumn();
                     updatePlot();
                 });
+
                 table.addEventListener('input', (e) => {
                     if (e.target.matches('[contenteditable="true"]')) {
+                        // Use a short timeout to allow the DOM to update before plotting
                         setTimeout(updatePlot, 50);
                     }
                 });
+
                 table.addEventListener('click', (e) => {
                     if (e.target.matches('.delete-row-btn, .delete-row-btn *')) {
                         deleteRow(e.target.closest('tr'));
@@ -212,13 +218,15 @@
                         deleteColumn(e.target.closest('th').cellIndex);
                     }
                 });
-                window.addEventListener('resize', () => {
-                    requestAnimationFrame(updatePlot);
-                });
+                
+                // Removed the redundant window resize event listener.
+                // Plotly's {responsive: true} config handles this automatically and more efficiently.
             }
+
             /**
              * Creates a new column in the table.
-             * @param {string} [headerText="New Column"] - The text for the new header cell. */
+             * @param {string} [headerText="New Column"] - The text for the new header cell. 
+             */
             function createColumn(headerText = "New Column") {
                 const th = document.createElement('th');
                 th.setAttribute('contenteditable', 'true');
@@ -228,18 +236,24 @@
                 deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
                 th.appendChild(deleteBtn);
                 thead.appendChild(th);
+
+                // Add a corresponding cell to each existing row
                 for (const row of tbody.rows) {
                     const td = document.createElement('td');
                     td.setAttribute('contenteditable', 'true');
                     td.textContent = '0';
+                    // Insert before the last cell, which is the delete button cell
                     row.insertBefore(td, row.cells[row.cells.length - 1]);
                 }
             }
+
             /**
              * Deletes a column from the table by its index.
-             * @param {number} colIndex - The index of the column to delete. */
+             * @param {number} colIndex - The index of the column to delete. 
+             */
             function deleteColumn(colIndex) {
                 if (thead.cells.length <= 1) {
+                    // Show a temporary message instead of an alert
                     const modal = document.createElement('div');
                     modal.textContent = 'You must have at least one column.';
                     Object.assign(modal.style, { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: 'var(--danger-color)', color: 'white', padding: '10px 20px', borderRadius: '5px', zIndex: 1000 });
@@ -253,9 +267,11 @@
                 }
                 updatePlot();
             }
+
             /**
              * Creates a new row in the table.
-             * @param {Array<number|string>} [rowData=[]] - An array of data for the new row.*/
+             * @param {Array<number|string>} [rowData=[]] - An array of data for the new row.
+             */
             function createRow(rowData = []) {
                 const tr = tbody.insertRow();
                 const colCount = thead.cells.length;
@@ -264,52 +280,68 @@
                     td.setAttribute('contenteditable', 'true');
                     td.textContent = rowData[i] !== undefined ? rowData[i] : '0';
                 }
+                // Add a final cell for the delete button
                 const deleteCell = tr.insertCell();
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn delete-row-btn';
                 deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
                 deleteCell.appendChild(deleteBtn);
-                deleteCell.style.border = 'none'; // No border for the action cell
+                // Style the action cell to be unobtrusive
+                deleteCell.style.border = 'none'; 
                 deleteCell.style.background = 'none';
             }
 
             /**
              * Deletes a specific row element from the table.
-             * @param {HTMLTableRowElement} rowElement - The <tr> element to be deleted. */
+             * @param {HTMLTableRowElement} rowElement - The <tr> element to be deleted. 
+             */
             function deleteRow(rowElement) {
                 rowElement.remove();
                 updatePlot();
             }
+
             /**
              * Parses the HTML table to extract headers and data.
-             * @returns {{headers: string[], data: Array<Array<number>>}} An object containing headers and data. */
+             * @returns {{headers: string[], data: Array<Array<number>>}} An object containing headers and data. 
+             */
             function parseTable() {
                 const headers = Array.from(thead.cells).map(th => {
+                    // Clone the header to avoid modifying the live DOM when removing the button
                     const thClone = th.cloneNode(true);
                     const btn = thClone.querySelector('.delete-col-btn');
                     if (btn) btn.remove();
                     return thClone.textContent.trim();
                 });
+
                 const data = Array.from(tbody.rows).map(row => {
+                    // Get all cells except for the last one (which holds the delete button)
                     const dataCells = Array.from(row.cells).slice(0, -1);
                     return dataCells.map(cell => {
                         const value = parseFloat(cell.textContent);
-                        return isNaN(value) ? 0 : value;
+                        return isNaN(value) ? 0 : value; // Default non-numeric values to 0
                     });
                 });
                 
                 return { headers, data };
             }
+
+            /**
+             * Updates the plot based on the current data in the table.
+             * Handles 1D, 2D, and 3D plots automatically.
+             */
             function updatePlot() {
                 const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
                 const { headers, data } = parseTable();
                 const numCols = headers.length;
+
                 Plotly.purge(plotDiv);
-                plotDiv.innerHTML = '';
+                plotDiv.innerHTML = ''; // Clear previous content
+
                 if (numCols === 0 || data.length === 0) {
                     plotDiv.textContent = 'Please add columns and rows with data to generate a plot.';
                     return;
                 }
+
                 let plotData = [];
                 let layout = {
                     title: 'Data Plot',
@@ -321,8 +353,9 @@
                         color: 'var(--text-color)'
                     }
                 };
+
                 switch (numCols) {
-                    case 1:
+                    case 1: // 1D Plot (Line Chart)
                         plotData = [{
                             y: data.map(row => row[0]),
                             x: data.map((_, i) => i), 
@@ -335,7 +368,7 @@
                         layout.xaxis = { title: 'Index' };
                         layout.yaxis = { title: headers[0] };
                         break;
-                    case 2:
+                    case 2: // 2D Scatter Plot
                         plotData = [{
                             x: data.map(row => row[0]),
                             y: data.map(row => row[1]),
@@ -349,7 +382,7 @@
                         layout.xaxis = { title: headers[0] };
                         layout.yaxis = { title: headers[1] };
                         break;
-                    case 3:
+                    case 3: // 3D Scatter Plot
                         plotData = [{
                             x: data.map(row => row[0]),
                             y: data.map(row => row[1]),
@@ -357,7 +390,7 @@
                             mode: 'markers',
                             type: 'scatter3d',
                             marker: { 
-                                color: data.map(row => row[2]), 
+                                color: data.map(row => row[2]), // Color by Z-value
                                 colorscale: 'Viridis',
                                 size: 8
                             }
@@ -368,12 +401,16 @@
                             zaxis: { title: headers[2] }
                         };
                         break;
-                    default:
+                    default: // More than 3 columns
                         plotDiv.textContent = 'Plotting is supported for 1, 2, or 3 columns only.';
                         return; 
                 }
+
+                // Create the plot with a responsive configuration
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
             }
+
+            // Start the application
             initialize();
         });
     </script>
