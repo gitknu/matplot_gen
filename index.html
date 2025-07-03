@@ -61,28 +61,26 @@
             padding: 20px;
         }
 
+        /* The right pane is now a grid container to robustly manage its content */
         #right-pane {
             width: 60%;
             flex-shrink: 0;
             border-left: 2px solid var(--border-color);
             height: 100%;
-            overflow-y: auto; 
-            /* Padding is removed from the pane itself to prevent layout conflicts */
+            padding: 20px; /* Padding is applied directly to the pane */
+            display: grid; /* Use grid for more reliable sizing */
+            grid-template-rows: 1fr;
+            grid-template-columns: 1fr;
+            overflow: hidden; /* Prevent any possible overflow from this pane */
         }
-
-        /* New wrapper to robustly handle padding around the plot */
-        #plot-container {
-            width: 100%;
-            height: 100%;
-            padding: 20px; /* Padding is now on this wrapper */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        
+        /* The intermediate plot-container has been removed */
 
         #plot-div {
             width: 100%;
             height: 100%;
+            min-height: 0; /* Critical fix for grid layout to prevent content overflow */
+            min-width: 0; /* Critical fix for grid layout */
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -190,10 +188,8 @@
             </div>
         </div>
         <div id="right-pane">
-            <!-- A new container is added here to correctly manage padding and prevent overflow -->
-            <div id="plot-container">
-                <div id="plot-div">
-                </div>
+            <!-- The intermediate wrapper has been removed for a simpler, more robust layout -->
+            <div id="plot-div">
             </div>
         </div>
     </div>
