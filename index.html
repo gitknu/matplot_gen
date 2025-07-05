@@ -335,7 +335,7 @@
                 plotDiv.innerHTML = '';
 
                 if (numCols === 0 || data.length === 0) {
-                    plotDiv.textContent = 'Please add columns and rows with data to generate a plot.';
+                    plotDiv.textContent = 'Додайте рядок-колонку аби згенерувати інформацію';
                     return;
                 }
                 
@@ -343,7 +343,7 @@
                 const plotContainerRect = plotDiv.getBoundingClientRect();
 
                 let layout = {
-                    title: 'Data Plot',
+                    title: 'Графік',
                     width: plotContainerRect.width,
                     height: plotContainerRect.height,
                     margin: { t: 40, l: 50, r: 20, b: 50 },
@@ -413,7 +413,7 @@
                         };
                         break;
                     default:
-                        plotDiv.textContent = 'Plotting is supported for 1, 2, or 3 columns only.';
+                        plotDiv.textContent = 'Генератор підтримує роботу лише у 3-вимірному просторі';
                         return; 
                 }
                 
