@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Data Table and Plot Generator</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --primary-hover-color: #357ABD;
+            --danger-color: #e24a4a;
+            --danger-hover-color: #c93e3e;
+            --background-color: #f4f7f9;
+            --container-bg-color: #ffffff;
+            --text-color: #333;
+            --border-color: #e0e0e0;
+            --header-bg-color: #f8f9fa;
+            --row-hover-color: #eff5fc;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden; 
+        }
+        .main-container {
+            display: flex;
+            height: 100vh;
+            width: 100%;
+        }
+        #left-pane, #right-pane {
+            height: 100%;
+            overflow-y: auto; 
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #left-pane {
+            flex: 0 0 40%;
+            background-color: var(--container-bg-color);
+        }
+        #right-pane {
+            flex: 1; /* Allow this pane to flexibly take up the remaining space */
+            border-left: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* IMPORTANT: We need position relative for child absolute positioning if needed */
+            position: relative; 
+        }
+        #plot-div {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            color: #777;
+            text-align: center;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        #data-table-container {
+            margin-top: 20px;
+        }
+        #data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #data-table th, #data-table td {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: center;
+            position: relative;
+        }
+        #data-table th {
+            background-color: var(--header-bg-color);
+            font-weight: 500;
+        }
+        #data-table tbody tr:hover {
+            background-color: var(--row-hover-color);
+        }
+        [contenteditable="true"] {
+            outline: 2px solid transparent;
+            transition: outline 0.2s;
+        }
+        [contenteditable="true"]:focus {
+            outline: 2px solid var(--primary-color);
+            background-color: #fff;
+        }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.2s, color 0.2s;
+        }
+        .delete-col-btn { right: 5px; }
+        .delete-row-btn { right: 5px; }
+        th:hover .delete-col-btn,
+        tr:hover .delete-row-btn {
+            opacity: 1;
+        }
+        .delete-btn:hover {
+            color: var(--danger-color);
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background-color: var(--primary-hover-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div id="left-pane">
+            <h2><i class="fas fa-table"></i> Генератор графіків</h2>
+            <div id="data-table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+            <div class="controls">
+                <button id="add-row-btn" class="btn"><i class="fas fa-plus"></i>Додати рядок</button>
+                <button id="add-col-btn" class="btn"><i class="fas fa-plus"></i>Додати колонку</button>
+            </div>
+        </div>
+        <div id="right-pane">
+            <div id="plot-div">
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const table = document.getElementById('data-table');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
+            const plotDiv = document.getElementById('plot-div');
+            const addRowBtn = document.getElementById('add-row-btn');
+            const addColBtn = document.getElementById('add-col-btn');
+
+            function initialize() {
+                const initialHeaders = ["Координата X"];
+                const initialData = [
+                    [2],
+                    [4],
+                    [3],
+                    [5],
+                    [4.5]
+                ];
+
+                initialHeaders.forEach(headerText => createColumn(headerText));
+                initialData.forEach(rowData => createRow(rowData));
+                updatePlot();
+                setupEventListeners();
+            }
+
+            function setupEventListeners() {
+                addRowBtn.addEventListener('click', () => {
+                    createRow();
+                    updatePlot();
+                });
+                
+                // --- MODIFICATION START ---
+                addColBtn.addEventListener('click', () => {
+                    const currentColCount = thead.cells.length;
+                    let newHeaderText;
+
+                    if (currentColCount >= 3) {
+                        const modal = document.createElement('div');
+                        modal.textContent = 'Plotting is supported for up to 3 columns only.';
+                        Object.assign(modal.style, { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: 'var(--danger-color)', color: 'white', padding: '10px 20px', borderRadius: '5px', zIndex: 1000 });
+                        document.body.appendChild(modal);
+                        setTimeout(() => modal.remove(), 3000);
+                        return;
+                    }
+
+                    if (currentColCount === 1) {
+                        newHeaderText = "Координата Y";
+                    } else if (currentColCount === 2) {
+                        newHeaderText = "Координата Z";
+                    }
+
+                    if (newHeaderText) {
+                        createColumn(newHeaderText);
+                        updatePlot();
+                    }
+                });
+                // --- MODIFICATION END ---
+
+                table.addEventListener('input', (e) => {
+                    if (e.target.matches('[contenteditable="true"]')) {
+                        setTimeout(updatePlot, 50);
+                    }
+                });
+
+                table.addEventListener('click', (e) => {
+                    if (e.target.matches('.delete-row-btn, .delete-row-btn *')) {
+                        deleteRow(e.target.closest('tr'));
+                    }
+                    if (e.target.matches('.delete-col-btn, .delete-col-btn *')) {
+                        deleteColumn(e.target.closest('th').cellIndex);
+                    }
+                });
+                
+                window.addEventListener('resize', () => {
+                    requestAnimationFrame(updatePlot);
+                });
+            }
+
+            function createColumn(headerText = "New Column") {
+                const th = document.createElement('th');
+                th.setAttribute('contenteditable', 'true');
+                th.textContent = headerText;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn delete-col-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                th.appendChild(deleteBtn);
+
+                thead.appendChild(th);
+
+                for (const row of tbody.rows) {
+                    const td = document.createElement('td');
+                    td.setAttribute('contenteditable', 'true');
+                    td.textContent = '0';
+                    // Insert the new cell before the delete button cell
+                    row.insertBefore(td, row.cells[row.cells.length - 1]);
+                }
+            }
+            
+            function deleteColumn(colIndex) {
+                 if (thead.cells.length <= 1) {
+                     const modal = document.createElement('div');
+                     modal.textContent = 'You must have at least one column.';
+                     Object.assign(modal.style, { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: 'var(--danger-color)', color: 'white', padding: '10px 20px', borderRadius: '5px', zIndex: 1000 });
+                     document.body.appendChild(modal);
+                     setTimeout(() => modal.remove(), 3000);
+                     return;
+                 }
+                thead.deleteCell(colIndex);
+                for (const row of tbody.rows) {
+                    row.deleteCell(colIndex);
+                }
+                updatePlot();
+            }
+
+            function createRow(rowData = []) {
+                const tr = tbody.insertRow();
+                const colCount = thead.cells.length;
+
+                for (let i = 0; i < colCount; i++) {
+                    const td = tr.insertCell();
+                    td.setAttribute('contenteditable', 'true');
+                    td.textContent = rowData[i] !== undefined ? rowData[i] : '0';
+                }
+                
+                const deleteCell = tr.insertCell();
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn delete-row-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteCell.appendChild(deleteBtn);
+                deleteCell.style.border = 'none';
+                deleteCell.style.background = 'none';
+            }
+
+            function deleteRow(rowElement) {
+                rowElement.remove();
+                updatePlot();
+            }
+
+            function parseTable() {
+                const headers = Array.from(thead.cells).map(th => {
+                    const thClone = th.cloneNode(true);
+                    const btn = thClone.querySelector('.delete-col-btn');
+                    if (btn) btn.remove();
+                    return thClone.textContent.trim();
+                });
+
+                const data = Array.from(tbody.rows).map(row => {
+                    const dataCells = Array.from(row.cells).slice(0, -1); 
+                    return dataCells.map(cell => {
+                        const value = parseFloat(cell.textContent);
+                        return isNaN(value) ? 0 : value;
+                    });
+                });
+                
+                return { headers, data };
+            }
+
+            function updatePlot() {
+                const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+                const { headers, data } = parseTable();
+                const numCols = headers.length;
+
+                Plotly.purge(plotDiv);
+                plotDiv.innerHTML = '';
+
+                if (numCols === 0 || data.length === 0) {
+                    plotDiv.textContent = 'Please add columns and rows with data to generate a plot.';
+                    return;
+                }
+                
+                let plotData = [];
+                const plotContainerRect = plotDiv.getBoundingClientRect();
+
+                let layout = {
+                    title: 'Data Plot',
+                    width: plotContainerRect.width,
+                    height: plotContainerRect.height,
+                    margin: { t: 40, l: 50, r: 20, b: 50 },
+                    paper_bgcolor: 'var(--container-bg-color)',
+                    plot_bgcolor: 'var(--container-bg-color)',
+                    font: {
+                        family: 'Inter, sans-serif',
+                        color: 'var(--text-color)'
+                    }
+                };
+
+                switch (numCols) {
+                    case 1: // 1D Dot Plot
+                        plotData = [{
+                            x: data.map(row => row[0]), // The values are on the X-axis
+                            y: data.map(() => 0),     // Y is always 0 to create a horizontal line of dots
+                            mode: 'markers',
+                            type: 'scatter',
+                            marker: {
+                                color: primaryColor,
+                                size: 12 // "fat dots"
+                            }
+                        }];
+                        layout.title = headers[0];
+                        layout.xaxis = { title: headers[0] };
+                        layout.yaxis = {
+                            // Hide the y-axis as it's not meaningful for 1D data
+                            title: '',
+                            showticklabels: false,
+                            showgrid: false,
+                            zeroline: true, // This provides the "line" for the dots to sit on
+                            range: [-1, 1],  // Keep the vertical range tight
+                            fixedrange: true // Prevent user from panning/zooming the y-axis
+                        };
+                        break;
+                    case 2: // 2D Scatter Plot
+                        plotData = [{
+                            x: data.map(row => row[0]),
+                            y: data.map(row => row[1]),
+                            mode: 'markers',
+                            type: 'scatter',
+                            marker: { 
+                                color: primaryColor, 
+                                size: 10
+                            }
+                        }];
+                        layout.xaxis = { title: headers[0] };
+                        layout.yaxis = { title: headers[1] };
+                        break;
+                    case 3: // 3D Scatter Plot
+                        plotData = [{
+                            x: data.map(row => row[0]),
+                            y: data.map(row => row[1]),
+                            z: data.map(row => row[2]),
+                            mode: 'markers',
+                            type: 'scatter3d',
+                            marker: { 
+                                color: data.map(row => row[2]),
+                                colorscale: 'Viridis',
+                                size: 8
+                            }
+                        }];
+                        layout.scene = {
+                            xaxis: { title: headers[0] },
+                            yaxis: { title: headers[1] },
+                            zaxis: { title: headers[2] }
+                        };
+                        break;
+                    default:
+                        plotDiv.textContent = 'Plotting is supported for 1, 2, or 3 columns only.';
+                        return; 
+                }
+                
+                Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
+            }
+
+            initialize();
+        });
+    </script>
+</body>
+</html>
