@@ -158,15 +158,39 @@
         .btn:hover {
             background-color: var(--primary-hover-color);
         }
-        /* MODIFICATION: Styles for the color picker input */
-        #color-picker {
-            padding: 2px;
-            width: 50px;
+        /* MODIFICATION: Styles for the color picker and HEX input wrapper */
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
             height: 40px;
             border: 2px solid var(--border-color);
             border-radius: 6px;
-            cursor: pointer;
+            padding: 0 5px 0 8px;
+            box-sizing: border-box;
             background-color: var(--container-bg-color);
+            transition: border-color 0.2s;
+        }
+        .color-picker-wrapper:focus-within {
+            border-color: var(--primary-color);
+        }
+        #color-picker {
+            padding: 0;
+            width: 28px;
+            height: 28px;
+            border: none;
+            cursor: pointer;
+            background-color: transparent;
+        }
+        #hex-input {
+            border: none;
+            outline: none;
+            width: 70px;
+            height: 100%;
+            padding-left: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            background-color: transparent;
+            color: var(--text-color);
         }
     </style>
 </head>
@@ -178,8 +202,11 @@
                 <div class="controls">
                     <button id="add-row-btn" class="btn"><i class="fas fa-plus"></i>Рядок ⮟</button>
                     <button id="add-col-btn" class="btn"><i class="fas fa-plus"></i>Колонку ➤</button>
-                    <!-- MODIFICATION: Added color picker input -->
-                    <input type="color" id="color-picker" value="#4a90e2" title="Обрати колір точок">
+                    <!-- MODIFICATION: Added a wrapper for color picker and HEX input -->
+                    <div class="color-picker-wrapper" title="Обрати колір точок">
+                        <input type="color" id="color-picker" value="#4a90e2">
+                        <input type="text" id="hex-input" value="#4a90e2" maxlength="7">
+                    </div>
                 </div>
             </div>
             <div id="data-table-container">
@@ -206,21 +233,22 @@
             const plotDiv = document.getElementById('plot-div');
             const addRowBtn = document.getElementById('add-row-btn');
             const addColBtn = document.getElementById('add-col-btn');
-            // MODIFICATION: Get reference to the color picker
+            // MODIFICATION: Get references to the color picker and the new hex input
             const colorPicker = document.getElementById('color-picker');
+            const hexInput = document.getElementById('hex-input');
 
             function initialize() {
                 const initialHeaders = ["Координата X"];
                 const initialData = [
-                    [2],
-                    [4],
-                    [3],
-                    [5],
-                    [4.5]
+                    [2], [4], [3], [5], [4.5]
                 ];
 
                 initialHeaders.forEach(headerText => createColumn(headerText));
                 initialData.forEach(rowData => createRow(rowData));
+                
+                // Set initial values
+                hexInput.value = colorPicker.value;
+
                 updatePlot();
                 adjustTableFontSize(); // Adjust font on initial load
                 setupEventListeners();
@@ -265,8 +293,24 @@
                     }
                 });
 
-                // MODIFICATION: Add event listener for the color picker
-                colorPicker.addEventListener('input', updatePlot);
+                // MODIFICATION: Add event listeners for the color picker and hex input
+                colorPicker.addEventListener('input', () => {
+                    hexInput.value = colorPicker.value;
+                    updatePlot();
+                });
+
+                hexInput.addEventListener('change', () => {
+                    let hexValue = hexInput.value;
+                    // Basic validation for a hex color string
+                    if (/^#[0-9A-F]{6}$/i.test(hexValue)) {
+                        colorPicker.value = hexValue;
+                        updatePlot();
+                    } else {
+                        // If the input is invalid, revert it to the picker's current color
+                        hexInput.value = colorPicker.value;
+                    }
+                });
+
 
                 table.addEventListener('click', (e) => {
                     if (e.target.matches('.delete-row-btn, .delete-row-btn *')) {
@@ -391,7 +435,7 @@
             }
 
             function updatePlot() {
-                // MODIFICATION: Get color from the picker instead of CSS variable
+                // MODIFICATION: Get color from the picker, which is synced with the hex input
                 const selectedColor = colorPicker.value;
                 const { headers, data } = parseTable();
                 const numCols = headers.length;
