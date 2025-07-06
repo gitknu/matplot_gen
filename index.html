@@ -43,7 +43,7 @@
             box-sizing: border-box;
         }
         #left-pane {
-            flex: 0 0 55%;
+            flex: 0 0 70%;
             background-color: var(--container-bg-color);
             /* We will manage overflow with font-size, so hide the scrollbar */
             overflow-y: hidden;
@@ -240,7 +240,7 @@
             function initialize() {
                 const initialHeaders = ["Координата X"];
                 const initialData = [
-                    [2], [4], [3], [5], [4.5]
+                    [2], [4], [3], [5], [10.5]
                 ];
 
                 initialHeaders.forEach(headerText => createColumn(headerText));
@@ -519,7 +519,11 @@
                         layout.scene = {
                             xaxis: { title: headers[0] },
                             yaxis: { title: headers[1] },
-                            zaxis: { title: headers[2] }
+                            zaxis: { title: headers[2] },
+                            // MODIFICATION: Set camera further away for a "zoomed-out" initial view
+                            camera: {
+                                eye: { x: 2.75, y: 2.75, z: 2.75 }
+                            }
                         };
                         break;
                     default:
