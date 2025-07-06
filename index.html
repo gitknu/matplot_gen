@@ -158,7 +158,6 @@
         .btn:hover {
             background-color: var(--primary-hover-color);
         }
-        /* MODIFICATION: Styles for the color picker and HEX input wrapper */
         .color-picker-wrapper {
             display: flex;
             align-items: center;
@@ -202,10 +201,9 @@
                 <div class="controls">
                     <button id="add-row-btn" class="btn"><i class="fas fa-plus"></i>Рядок ⮟</button>
                     <button id="add-col-btn" class="btn"><i class="fas fa-plus"></i>Колонку ➤</button>
-                    <!-- MODIFICATION: Added a wrapper for color picker and HEX input -->
                     <div class="color-picker-wrapper" title="Обрати колір точок">
                         <input type="color" id="color-picker" value="#4a90e2">
-                        <input type="text" id="hex-input" value="#b80000" maxlength="7">
+                        <input type="text" id="hex-input" value="#4a90e2" maxlength="7">
                     </div>
                 </div>
             </div>
@@ -233,7 +231,6 @@
             const plotDiv = document.getElementById('plot-div');
             const addRowBtn = document.getElementById('add-row-btn');
             const addColBtn = document.getElementById('add-col-btn');
-            // MODIFICATION: Get references to the color picker and the new hex input
             const colorPicker = document.getElementById('color-picker');
             const hexInput = document.getElementById('hex-input');
 
@@ -250,7 +247,7 @@
                 hexInput.value = colorPicker.value;
 
                 updatePlot();
-                adjustTableFontSize(); // Adjust font on initial load
+                adjustTableLayout(); // Adjust layout on initial load
                 setupEventListeners();
             }
 
@@ -258,7 +255,7 @@
                 addRowBtn.addEventListener('click', () => {
                     createRow();
                     updatePlot();
-                    adjustTableFontSize(); // Adjust font after adding a row
+                    adjustTableLayout(); // Adjust layout after adding a row
                 });
                 
                 addColBtn.addEventListener('click', () => {
@@ -283,7 +280,7 @@
                     if (newHeaderText) {
                         createColumn(newHeaderText);
                         updatePlot();
-                        adjustTableFontSize(); // Adjust font after adding a column
+                        adjustTableLayout(); // Adjust layout after adding a column
                     }
                 });
 
@@ -293,7 +290,6 @@
                     }
                 });
 
-                // MODIFICATION: Add event listeners for the color picker and hex input
                 colorPicker.addEventListener('input', () => {
                     hexInput.value = colorPicker.value;
                     updatePlot();
@@ -301,12 +297,10 @@
 
                 hexInput.addEventListener('change', () => {
                     let hexValue = hexInput.value;
-                    // Basic validation for a hex color string
                     if (/^#[0-9A-F]{6}$/i.test(hexValue)) {
                         colorPicker.value = hexValue;
                         updatePlot();
                     } else {
-                        // If the input is invalid, revert it to the picker's current color
                         hexInput.value = colorPicker.value;
                     }
                 });
@@ -322,10 +316,10 @@
                 });
                 
                 window.addEventListener('resize', () => {
-                    // On resize, update plot and adjust font size
+                    // On resize, update plot and adjust layout
                     requestAnimationFrame(() => {
                         updatePlot();
-                        adjustTableFontSize();
+                        adjustTableLayout();
                     });
                 });
             }
@@ -364,7 +358,7 @@
                     row.deleteCell(colIndex);
                 }
                 updatePlot();
-                adjustTableFontSize(); // Adjust font after deleting a column
+                adjustTableLayout(); // Adjust layout after deleting a column
             }
 
             function createRow(rowData = []) {
@@ -389,7 +383,7 @@
             function deleteRow(rowElement) {
                 rowElement.remove();
                 updatePlot();
-                adjustTableFontSize(); // Adjust font after deleting a row
+                adjustTableLayout(); // Adjust layout after deleting a row
             }
 
             function parseTable() {
@@ -411,31 +405,47 @@
                 return { headers, data };
             }
 
-            function adjustTableFontSize() {
-                const leftPane = document.getElementById('left-pane');
+            /**
+             * MODIFIED FUNCTION
+             * Adjusts the table's font size to ensure its total height fits within the
+             * available space in its container, minus a 2vh buffer.
+             */
+            function adjustTableLayout() {
                 const tableContainer = document.getElementById('data-table-container');
                 const table = document.getElementById('data-table');
-                const BASE_FONT_SIZE = 14; 
-                const MIN_FONT_SIZE = 7;   
+                const BASE_FONT_SIZE = 14; // The default font size we aim for.
+                const MIN_FONT_SIZE = 7;   // The smallest the font can get.
 
-                table.style.fontSize = BASE_FONT_SIZE + 'px';
-                leftPane.offsetHeight; 
-
-                const contentHeight = table.offsetHeight;
+                // Calculate the maximum height the table should occupy.
+                // This is the height of its container (set by flexbox) minus 2% of the viewport height.
                 const containerHeight = tableContainer.clientHeight;
+                const margin = window.innerHeight * 0.1; // 2vh
+                const targetMaxHeight = containerHeight - margin;
 
-                if (contentHeight <= containerHeight) {
-                    return;
+                // Temporarily reset font size to the base to measure the table's "natural" height.
+                table.style.fontSize = BASE_FONT_SIZE + 'px';
+                
+                // Force the browser to recalculate layout to get the correct height.
+                const contentHeight = table.offsetHeight;
+
+                // If the table's natural height is taller than our target...
+                if (contentHeight > targetMaxHeight) {
+                    // ...calculate the scaling ratio and shrink the font.
+                    const scaleRatio = targetMaxHeight / contentHeight;
+                    let newFontSize = BASE_FONT_SIZE * scaleRatio;
+                    
+                    // Enforce the minimum font size to maintain readability.
+                    newFontSize = Math.max(newFontSize, MIN_FONT_SIZE); 
+                    
+                    table.style.fontSize = newFontSize + 'px';
+                } else {
+                    // If it already fits, just ensure it's at the base font size.
+                    table.style.fontSize = BASE_FONT_SIZE + 'px';
                 }
-
-                const scaleRatio = containerHeight / contentHeight;
-                let newFontSize = BASE_FONT_SIZE * scaleRatio;
-                newFontSize = Math.max(newFontSize, MIN_FONT_SIZE);
-                table.style.fontSize = newFontSize + 'px';
             }
 
+
             function updatePlot() {
-                // MODIFICATION: Get color from the picker, which is synced with the hex input
                 const selectedColor = colorPicker.value;
                 const { headers, data } = parseTable();
                 const numCols = headers.length;
@@ -472,7 +482,6 @@
                             mode: 'markers',
                             type: 'scatter',
                             marker: {
-                                // MODIFICATION: Use selected color
                                 color: selectedColor,
                                 size: 12
                             }
@@ -495,7 +504,6 @@
                             mode: 'markers',
                             type: 'scatter',
                             marker: { 
-                                // MODIFICATION: Use selected color
                                 color: selectedColor, 
                                 size: 10
                             }
@@ -511,7 +519,6 @@
                             mode: 'markers',
                             type: 'scatter3d',
                             marker: { 
-                                // MODIFICATION: Use selected color for all points
                                 color: selectedColor,
                                 size: 8
                             }
@@ -520,7 +527,6 @@
                             xaxis: { title: headers[0] },
                             yaxis: { title: headers[1] },
                             zaxis: { title: headers[2] },
-                            // MODIFICATION: Set camera further away for a "zoomed-out" initial view
                             camera: {
                                 eye: { x: 2.75, y: 2.75, z: 2.75 }
                             }
