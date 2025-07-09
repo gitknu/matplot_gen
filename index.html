@@ -329,7 +329,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         }
         function deleteColumn(colIndex) {
             if (!isCompareMode && thead.cells.length <= 1) {
-                showModal('Необхідно додати бодай одну колонку.');
+                showModal('Необхідно мати в наявності бодай одну колонку.');
                 return;
             }
             thead.deleteCell(colIndex);
