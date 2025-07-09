@@ -336,7 +336,7 @@
                 } else {
                     const currentColCount = thead.cells.length;
                     if (currentColCount >= 3) {
-                        showModal('Plotting is supported for up to 3 columns only in single mode.');
+                        showModal('У режимі єдиного набору даних доступно лише 3 стовпці.');
                         return;
                     }
                     const newHeaderText = ["Координата Y", "Координата Z"][currentColCount - 1];
@@ -480,7 +480,7 @@
         }
         function deleteColumn(colIndex) {
             if (!isCompareMode && thead.cells.length <= 1) {
-                showModal('You must have at least one column.');
+                showModal('Необхідно додати бодай одну колонку.');
                 return;
             }
             thead.deleteCell(colIndex);
