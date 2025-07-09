@@ -88,7 +88,7 @@
         let isCompareMode = false;
         let connectPoints = false;
         let isBarChartMode = false;
-        let rotationAnimationId = null; // To hold the animation frame ID for rotation
+        let rotationAnimationId = null; 
         const defaultColors = ['#b80000', '#000000', '#50e3c2', '#f5a623', '#bd10e0'];
         function initialize() {
             const initialHeaders = ["Координата X"];
@@ -181,7 +181,7 @@
                 if (rotateToggle.checked) {
                     startRotation();
                 } else {
-                    stopRotation(); // Reset position when manually stopping
+                    stopRotation(); 
                 }
             });
         }
@@ -350,15 +350,14 @@
             }
         }
         function startRotation() {
-            if (rotationAnimationId) return; // Already rotating
+            if (rotationAnimationId) return; 
             const radius = 2.5; 
             const z = 1.75;
             let angle = Math.atan2(plotDiv.layout.scene.camera.eye.y, plotDiv.layout.scene.camera.eye.x);
             function rotate() {
-                angle += 0.01; // Rotation speed
+                angle += 0.01;
                 const eye_x = radius * Math.cos(angle);
                 const eye_y = radius * Math.sin(angle);
-
                 Plotly.relayout(plotDiv, { 'scene.camera.eye': { x: eye_x, y: eye_y, z: z } });
                 rotationAnimationId = requestAnimationFrame(rotate);
             }
