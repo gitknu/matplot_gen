@@ -792,7 +792,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 }).then(function(url) {
                     progressBar.style.width = '100%';
                     const a = document.createElement('a');
-a.href = url;
+                    a.href = url;
                     a.download = 'plot.png';
                     document.body.appendChild(a);
                     a.click();
@@ -811,8 +811,13 @@ a.href = url;
             captureStatus.textContent = "Завантаження компонентів...";
             progressBar.style.width = '0%';
         
-            const numFrames = 36;
-            const frameDelay = 100; // 10 FPS
+            // --- SMOOTHNESS PARAMETERS ---
+            // More frames = smoother rotation but larger file size.
+            const numFrames = 72; 
+            // Frame delay in milliseconds. 40ms = 25 FPS (1000 / 40 = 25).
+            const frameDelay = 40; 
+            // --- END OF PARAMETERS ---
+
             const angleStep = 2 * Math.PI / numFrames;
             const radius = 2.5;
             const z = 1.75;
@@ -820,8 +825,6 @@ a.href = url;
             let workerUrl = null;
         
             try {
-                // To bypass CORS issues when running from a local file, we fetch the worker script 
-                // and create a local Blob URL. This is the crucial step.
                 const workerResponse = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
                 if (!workerResponse.ok) throw new Error('Network response for worker was not ok');
                 const workerScript = await workerResponse.text();
@@ -852,7 +855,7 @@ a.href = url;
                 });
         
                 gif.on('progress', function(p) {
-                    const totalProgress = 10 + (p * 90); // Encoding is 90% of the work after capture
+                    const totalProgress = 10 + (p * 90);
                     progressBar.style.width = `${totalProgress}%`;
                     captureStatus.textContent = `Кодування GIF: ${Math.round(p * 100)}%`;
                 });
@@ -864,7 +867,8 @@ a.href = url;
                     const eye_y = radius * Math.sin(angle);
         
                     await Plotly.relayout(plotDiv, { 'scene.camera.eye': { x: eye_x, y: eye_y, z: z } });
-                    await new Promise(resolve => setTimeout(resolve, 100)); // Increased delay for rendering
+                    // Wait long enough for render, but not too long to slow down capture.
+                    await new Promise(resolve => setTimeout(resolve, 50)); 
         
                     const imgData = await Plotly.toImage(plotDiv, { format: 'png' });
                     const img = await new Promise(resolve => {
@@ -875,7 +879,7 @@ a.href = url;
         
                     gif.addFrame(img, { delay: frameDelay });
         
-                    const captureProgress = ((i + 1) / numFrames) * 10; // Capture is first 10%
+                    const captureProgress = ((i + 1) / numFrames) * 10;
                     progressBar.style.width = `${captureProgress}%`;
                     captureStatus.textContent = `Захоплення кадрів: ${Math.round(((i + 1) / numFrames) * 100)}%`;
                 }
@@ -889,7 +893,6 @@ a.href = url;
                 captureOverlay.style.display = 'none';
                 if (rotateToggle.checked) startRotation();
             } finally {
-                // Clean up the created Blob URL to prevent memory leaks
                 if (workerUrl) {
                     URL.revokeObjectURL(workerUrl);
                 }
