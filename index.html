@@ -209,7 +209,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         let isBarChartMode = false;
         let is3DPlot = false;
         let rotationAnimationId = null;
-        const defaultColors = ['#b80000', '#000000', '#50e3c2', '#f5a623', '#bd10e0'];
+        const defaultColors = ['#b80000', '#000000', '#50e3c2', '#f5a623', '#bd10e0', '#4a90e2', '#d0021b', '#7ed321', '#8b572a', '#9013fe'];
         rotateToggleContainer.classList.add('hidden');
         barChartToggleContainer.classList.add('hidden');
         connectToggleContainer.classList.add('hidden');
@@ -244,9 +244,14 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         function setupEventListeners() {
             addRowBtn.addEventListener('click', () => { createRow(); updatePlot(); adjustTableLayout(); });
             addColBtn.addEventListener('click', () => {
-                if (isCompareMode) { createColumn(); } 
-                else {
-                    const currentColCount = mainHeaderRow.cells.length;
+                const currentColCount = mainHeaderRow.cells.length;
+                if (isCompareMode) {
+                    if (currentColCount >= 10) {
+                        showModal('Максимальна кількість наборів даних – 10.');
+                        return;
+                    }
+                    createColumn();
+                } else {
                     if (currentColCount >= 3) { showModal('У режимі єдиного набору даних доступно лише 3 стовпці.'); return; }
                     const newHeaderText = ["Координата Y", "Координата Z"][currentColCount - 1];
                     if (newHeaderText) { createColumn(newHeaderText); }
