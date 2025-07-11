@@ -33,7 +33,7 @@ h2{margin:0;color:#333;flex-shrink:0}
 
 #data-table{width:100%;border-collapse:collapse}
 
-#data-table th,#data-table td{border:1px solid var(--border-color);padding:10px;text-align:center;position:relative;transition:font-size .2s ease-in-out}
+#data-table th,#data-table td{border:1px solid var(--border-color);padding:10px;text-align:center;position:relative;transition:font-size .2s ease-in-out, background-color .2s ease-in-out}
 
 #data-table thead tr th{background-color:var(--header-bg-color);font-weight:500}
 
@@ -42,6 +42,8 @@ h2{margin:0;color:#333;flex-shrink:0}
 [contenteditable=true]{outline:2px solid transparent;transition:outline .2s}
 
 [contenteditable=true]:focus{outline:2px solid var(--primary-color);background-color:#fff}
+
+.invalid-cell { background-color: rgba(184, 0, 0, 0.1) !important; }
 
 .delete-btn{background:0 0;border:none;color:#aaa;cursor:pointer;font-size:1em;position:absolute;top:50%;transform:translateY(-50%);opacity:0;transition:opacity .2s,color .2s}
 
@@ -252,7 +254,10 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                     }
                     createColumn();
                 } else {
-                    if (currentColCount >= 3) { showModal('У режимі єдиного набору даних доступно лише 3 стовпці.'); return; }
+                    if (currentColCount >= 3) { 
+                        showModal('У режимі єдиного набору даних доступно лише 3 стовпці. Натисніть <i class="fas fa-balance-scale"></i> аби обрати режим порівняння даних.'); 
+                        return; 
+                    }
                     const newHeaderText = ["Координата Y", "Координата Z"][currentColCount - 1];
                     if (newHeaderText) { createColumn(newHeaderText); }
                 }
@@ -311,7 +316,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             });
         }
         
-        function showModal(message){const modal=document.createElement('div');modal.textContent=message;Object.assign(modal.style,{position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',background:'var(--danger-color)',color:'white',padding:'10px 20px',borderRadius:'5px',zIndex:1000,boxShadow:'0 2px 10px rgba(0,0,0,0.2)',maxWidth:'90%',textAlign:'center',fontSize:'14px'});document.body.appendChild(modal);setTimeout(()=>modal.remove(),4e3)}
+        function showModal(message){const modal=document.createElement('div');modal.innerHTML=message;Object.assign(modal.style,{position:'fixed',top:'85px',left:'50%',transform:'translateX(-50%)',background:'var(--danger-color)',color:'white',padding:'10px 20px',borderRadius:'5px',zIndex:1000,boxShadow:'0 2px 10px rgba(0,0,0,0.2)',maxWidth:'90%',textAlign:'center',fontSize:'14px'});document.body.appendChild(modal);setTimeout(()=>modal.remove(),4e3)}
         
         function addOrUpdateCoordNameRow() {
             if (!isCompareMode) return;
@@ -351,7 +356,28 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             if (coordRow) coordRow.remove();
         }
 
-        function handleModeSwitch(){isCompareMode=compareToggle.checked;colorPickerContainer.classList.toggle('hidden',isCompareMode);if(isCompareMode){addOrUpdateCoordNameRow()}else{removeCoordNameRow()}updateTableView();updatePlot();adjustTableLayout()}
+        function handleModeSwitch() {
+            isCompareMode = compareToggle.checked;
+            colorPickerContainer.classList.toggle('hidden', isCompareMode);
+
+            if (isCompareMode) {
+                addOrUpdateCoordNameRow();
+            } else {
+                removeCoordNameRow();
+                const currentColCount = mainHeaderRow.cells.length;
+                if (currentColCount > 3) {
+                    for (let i = currentColCount - 1; i >= 3; i--) {
+                        mainHeaderRow.deleteCell(i);
+                        for (const row of tbody.rows) {
+                            row.deleteCell(i);
+                        }
+                    }
+                }
+            }
+            updateTableView();
+            updatePlot();
+            adjustTableLayout();
+        }
         
         function updateTableView(){Array.from(mainHeaderRow.cells).forEach((th,colIndex)=>{const existingPicker=th.querySelector('.column-color-picker');const contentWrapper=th.querySelector('.th-content-wrapper')||createContentWrapper(th);if(isCompareMode){if(!existingPicker){const picker=document.createElement('input');picker.type='color';picker.className='column-color-picker';picker.value=defaultColors[colIndex%defaultColors.length];contentWrapper.appendChild(picker)}contentWrapper.childNodes[0].nodeValue=`Набір даних ${colIndex+1} `}else{if(existingPicker){existingPicker.remove()}const headers=["Координата X","Координата Y","Координата Z"];contentWrapper.childNodes[0].nodeValue=headers[colIndex]||`Column ${colIndex+1}`}})}
         
@@ -450,7 +476,57 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         function stopRotation(resetPosition=true){if(rotationAnimationId){cancelAnimationFrame(rotationAnimationId);rotationAnimationId=null}if(resetPosition){Plotly.relayout(plotDiv,{'scene.camera.eye':{x:1.75,y:1.75,z:1.75}})}}
         function create3DBarTraces(points,color,name,barSize=.8){const allX=[],allY=[],allZ=[];const allI=[],allJ=[],allK=[];let vertexOffset=0;for(const point of points){const[px,py,pz]=point;if(pz===0)continue;const halfSize=barSize/2;const vertices=[[px-halfSize,py-halfSize,0],[px+halfSize,py-halfSize,0],[px+halfSize,py+halfSize,0],[px-halfSize,py+halfSize,0],[px-halfSize,py-halfSize,pz],[px+halfSize,py-halfSize,pz],[px+halfSize,py+halfSize,pz],[px-halfSize,py+halfSize,pz]];vertices.forEach(v=>{allX.push(v[0]);allY.push(v[1]);allZ.push(v[2])});const faces=[[0,1,2],[0,2,3],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[2,3,7],[2,7,6],[0,3,7],[0,7,4],[1,2,6],[1,6,5]];faces.forEach(face=>{allI.push(face[0]+vertexOffset);allJ.push(face[1]+vertexOffset);allK.push(face[2]+vertexOffset)});vertexOffset+=8}return{x:allX,y:allY,z:allZ,i:allI,j:allJ,k:allK,type:'mesh3d',name:name,color:color,flatshading:true,lighting:{ambient:.8,diffuse:1,specular:.1,roughness:.5,fresnel:.2}}}
         
+        function validateTableData() {
+            const allDataCells = tbody.querySelectorAll('td[contenteditable="true"]');
+            allDataCells.forEach(cell => cell.classList.remove('invalid-cell'));
+
+            if (isCompareMode) {
+                const dimFrequencies = {};
+                let dataFound = false;
+
+                allDataCells.forEach(cell => {
+                    const content = cell.textContent.trim();
+                    if (content) {
+                        dataFound = true;
+                        const dim = content.split(',').length;
+                        dimFrequencies[dim] = (dimFrequencies[dim] || 0) + 1;
+                    }
+                });
+
+                if (!dataFound) return;
+
+                let mostCommonDim = null;
+                let maxFreq = 0;
+                for (const dim in dimFrequencies) {
+                    if (dimFrequencies[dim] > maxFreq) {
+                        maxFreq = dimFrequencies[dim];
+                        mostCommonDim = parseInt(dim, 10);
+                    }
+                }
+                
+                if (mostCommonDim === null) return;
+
+                allDataCells.forEach(cell => {
+                    const content = cell.textContent.trim();
+                    if (content) {
+                        const currentDim = content.split(',').length;
+                        if (currentDim !== mostCommonDim) {
+                            cell.classList.add('invalid-cell');
+                        }
+                    }
+                });
+
+            } else {
+                allDataCells.forEach(cell => {
+                    if (cell.textContent.includes(',')) {
+                        cell.classList.add('invalid-cell');
+                    }
+                });
+            }
+        }
+
         function updatePlot() {
+            validateTableData();
             stopRotation(false);
             const parsed = parseTable();
             const plotContainerRect = plotDiv.getBoundingClientRect();
