@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор графіків</title>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.8/dist/ffmpeg.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -133,9 +133,12 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
     max-width: 80%;
     line-height: 1.5;
 }
-#ffmpeg-loading {
+#gif-loading {
     display: none;
     margin-top: 20px;
+}
+#temp-canvas {
+    display: none;
 }
     </style>
 </head>
@@ -198,8 +201,9 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         <div id="capture-progress">
             <div id="capture-progress-bar"></div>
         </div>
-        <div id="ffmpeg-loading">Завантаження відеокодеку... (це займе 10-20 секунд)</div>
+        <div id="gif-loading">Створення анімації...</div>
     </div>
+    <canvas id="temp-canvas"></canvas>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const table = document.getElementById('data-table');
@@ -224,7 +228,8 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         const captureOverlay = document.getElementById('capture-overlay');
         const captureStatus = document.getElementById('capture-status');
         const progressBar = document.getElementById('capture-progress-bar');
-        const ffmpegLoading = document.getElementById('ffmpeg-loading');
+        const tempCanvas = document.getElementById('temp-canvas');
+        const gifLoading = document.getElementById('gif-loading');
         let isCompareMode = false;
         let connectPoints = false;
         let isBarChartMode = false;
@@ -233,8 +238,6 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         rotateToggleContainer.classList.add('hidden');
         barChartToggleContainer.classList.add('hidden');
         connectToggleContainer.classList.add('hidden');
-        let ffmpeg = null;
-        let ffmpegLoaded = false;
         
         function initialize() {
             const initialHeaders = ["Координата X"];
@@ -346,7 +349,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             
             downloadBtn.addEventListener('click', async () => {
                 if (rotateToggle.checked && rotateToggleContainer.classList.contains('hidden') === false) {
-                    await captureRotationMP4();
+                    await captureRotationGIF();
                 } else {
                     captureScreenshot();
                 }
@@ -812,136 +815,98 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             }, 500);
         }
         
-        async function captureRotationMP4() {
+        async function captureRotationGIF() {
             captureOverlay.style.display = 'flex';
             captureStatus.textContent = "Підготовка до захоплення відео...";
             progressBar.style.width = '0%';
-            ffmpegLoading.style.display = 'none';
-            
-            // Load FFmpeg if needed
-            if (!ffmpegLoaded) {
-                try {
-                    ffmpegLoading.style.display = 'block';
-                    captureStatus.textContent = "Завантаження відеокодеку...";
-                    
-                    // Use createFFmpeg with corePath for reliable loading
-                    ffmpeg = FFmpeg.createFFmpeg({
-                        log: false,
-                        progress: ({ ratio }) => {
-                            progressBar.style.width = `${ratio * 100}%`;
-                        },
-                        corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js'
-                    });
-                    
-                    await ffmpeg.load();
-                    ffmpegLoaded = true;
-                    ffmpegLoading.style.display = 'none';
-                } catch (error) {
-                    console.error("FFmpeg load error:", error);
-                    captureOverlay.style.display = 'none';
-                    showModal('Помилка завантаження відеокодеку');
-                    return;
-                }
-            }
-            
-            const numFrames = 60;
-            const angleStep = 2 * Math.PI / numFrames;
-            const radius = 2.5;
-            const z = 1.75;
+            gifLoading.style.display = 'block';
             
             stopRotation(false);
             
             try {
+                const numFrames = 30;
+                const angleStep = 2 * Math.PI / numFrames;
+                const radius = 2.5;
+                const z = 1.75;
+                
+                // Set up canvas
+                const width = plotDiv.clientWidth;
+                const height = plotDiv.clientHeight;
+                tempCanvas.width = width;
+                tempCanvas.height = height;
+                const ctx = tempCanvas.getContext('2d');
+                
+                // Create GIF
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: width,
+                    height: height,
+                    repeat: 0, // 0 = loop forever
+                    background: '#ffffff'
+                });
+                
                 // Capture frames
-                captureStatus.textContent = "Захоплення кадрів...";
-                progressBar.style.width = '0%';
-                
-                const framePromises = [];
-                
                 for (let i = 0; i < numFrames; i++) {
                     const angle = i * angleStep;
                     const eye_x = radius * Math.cos(angle);
                     const eye_y = radius * Math.sin(angle);
                     
-                    // Update camera position
+                    // Update camera
                     await Plotly.relayout(plotDiv, {
                         'scene.camera.eye': { x: eye_x, y: eye_y, z: z }
                     });
                     
-                    // Wait for render to complete
+                    // Wait for render
                     await new Promise(resolve => setTimeout(resolve, 50));
                     
-                    // Capture frame
-                    framePromises.push(
-                        Plotly.toImage(plotDiv, {
-                            format: 'jpeg',
-                            width: plotDiv.clientWidth,
-                            height: plotDiv.clientHeight
-                        }).then(url => fetch(url).then(res => res.arrayBuffer()))
-                    );
+                    // Capture frame as image
+                    const url = await Plotly.toImage(plotDiv, {
+                        format: 'png',
+                        width: width,
+                        height: height
+                    });
+                    
+                    // Load image and add to GIF
+                    await new Promise(resolve => {
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.clearRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
+                            gif.addFrame(ctx, { copy: true, delay: 70 }); // 70ms delay per frame
+                            resolve();
+                        };
+                        img.src = url;
+                    });
                     
                     // Update progress
                     progressBar.style.width = `${((i+1) / numFrames) * 100}%`;
+                    captureStatus.textContent = `Захоплення кадру ${i+1}/${numFrames}...`;
                 }
                 
-                // Wait for all frames to be captured
-                const frames = await Promise.all(framePromises);
+                // Generate GIF
+                gif.on('finished', function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'rotating_plot.gif';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        captureOverlay.style.display = 'none';
+                    }, 100);
+                });
                 
-                // Write frames to FFmpeg
-                captureStatus.textContent = "Кодування відео...";
-                progressBar.style.width = '0%';
-                
-                for (let i = 0; i < numFrames; i++) {
-                    const paddedIndex = i.toString().padStart(3, '0');
-                    ffmpeg.FS('writeFile', `frame${paddedIndex}.jpg`, new Uint8Array(frames[i]));
-                }
-                
-                // Encode video
-                await ffmpeg.run(
-                    '-framerate', '30', 
-                    '-i', 'frame%03d.jpg',
-                    '-c:v', 'libx264',
-                    '-pix_fmt', 'yuv420p',
-                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', // Ensure dimensions are divisible by 2
-                    '-y', // Overwrite output file if exists
-                    'output.mp4'
-                );
-                
-                // Get video data
-                const data = ffmpeg.FS('readFile', 'output.mp4');
-                const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-                const videoUrl = URL.createObjectURL(videoBlob);
-                
-                // Create download link
-                const a = document.createElement('a');
-                a.href = videoUrl;
-                a.download = 'rotating_plot.mp4';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(videoUrl);
-                
-                // Clean up FFmpeg files
-                for (let i = 0; i < numFrames; i++) {
-                    const paddedIndex = i.toString().padStart(3, '0');
-                    try {
-                        ffmpeg.FS('unlink', `frame${paddedIndex}.jpg`);
-                    } catch (e) {
-                        console.warn("Error deleting frame:", e);
-                    }
-                }
-                
-                try {
-                    ffmpeg.FS('unlink', 'output.mp4');
-                } catch (e) {
-                    console.warn("Error deleting output:", e);
-                }
+                gif.render();
                 
             } catch (error) {
-                console.error("Video capture error:", error);
-                showModal('Помилка при створенні відео');
-            } finally {
+                console.error("GIF creation error:", error);
+                showModal('Помилка при створенні GIF');
                 captureOverlay.style.display = 'none';
+            } finally {
+                gifLoading.style.display = 'none';
                 
                 // Restart rotation if toggle is still checked
                 if (rotateToggle.checked) {
