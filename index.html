@@ -71,11 +71,13 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
 
 #hex-input{border:none;outline:0;width:70px;height:100%;padding-left:8px;font-size:14px;font-family:'Montserrat',sans-serif;background-color:transparent;color:var(--text-color)}
 
-.compare-control{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px;background-color:#eaf2fa;border-radius:6px;transition:opacity .2s}
+.compare-control, .control-wrapper{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px;background-color:#eaf2fa;border-radius:6px;transition:opacity .2s}
 
-.compare-control label{cursor:pointer;font-size:14px;font-weight:500;color:var(--primary-color);display:flex;align-items:center}
+.compare-control label, .control-wrapper label{cursor:pointer;font-size:14px;font-weight:500;color:var(--primary-color);display:flex;align-items:center}
 
 #compare-toggle,#connect-toggle,#bar-chart-toggle,#rotate-toggle{cursor:pointer;accent-color:var(--primary-color)}
+
+#thickness-slider{cursor:pointer;width:80px;accent-color:var(--primary-color)}
 
 .column-color-picker{width:24px;height:24px;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;margin-left:8px;vertical-align:middle}
 
@@ -91,7 +93,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
 
 .download-option i{width:16px;text-align:center;color:#666}
 
-#rotate-toggle-container,#connect-toggle-container,#bar-chart-toggle-container,#color-picker-container,#compare-toggle-container{display:flex;align-items:center;height:40px;visibility:visible;position:relative}
+#rotate-toggle-container,#connect-toggle-container,#bar-chart-toggle-container,#color-picker-container,#compare-toggle-container,#thickness-slider-container{display:flex;align-items:center;height:40px;visibility:visible;position:relative}
 
 #rotate-toggle-container.hidden,#connect-toggle-container.hidden,#bar-chart-toggle-container.hidden,#color-picker-container.hidden{opacity:0;position:absolute;pointer-events:none}
 
@@ -128,6 +130,10 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                     <div class="compare-control" id="bar-chart-toggle-container">
                         <input type="checkbox" id="bar-chart-toggle">
                         <label for="bar-chart-toggle" title="Стовпці"><i class="fas fa-chart-bar"></i></label>
+                    </div>
+                    <div class="control-wrapper" id="thickness-slider-container" title="Товщина елементів">
+                        <label for="thickness-slider"><i class="fas fa-arrows-alt-h"></i></label>
+                        <input type="range" id="thickness-slider" min="1" max="100" value="50" step="1">
                     </div>
                     <div class="color-picker-container" id="color-picker-container">
                         <button id="color-picker-toggle-btn" class="btn" title="Обрати колір точок">
@@ -198,6 +204,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         const connectToggle = document.getElementById('connect-toggle');
         const barChartToggle = document.getElementById('bar-chart-toggle');
         const rotateToggle = document.getElementById('rotate-toggle');
+        const thicknessSlider = document.getElementById('thickness-slider');
         const colorPickerContainer = document.getElementById('color-picker-container');
         const connectToggleContainer = document.getElementById('connect-toggle-container');
         const barChartToggleContainer = document.getElementById('bar-chart-toggle-container');
@@ -295,7 +302,9 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             rotateToggle.addEventListener('change', () => {
                 if (rotateToggle.checked) { startRotation(); } else { stopRotation(); }
             });
-
+            thicknessSlider.addEventListener('input', () => {
+                updatePlot();
+            });
             downloadToggleBtn.addEventListener('click', () => {
                 if (is3DPlot) {
                     downloadOptions.style.display = downloadOptions.style.display === 'block' ? 'none' : 'block';
@@ -528,6 +537,11 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         function updatePlot() {
             validateTableData();
             stopRotation(false);
+
+            const thicknessValue = parseFloat(thicknessSlider.value);
+            const markerSize = thicknessValue / 4; // Range: 0.25 -> 25, Default: 12.5
+            const barThickness = thicknessValue / 100; // Range: 0.01 -> 1.0, Default: 0.5
+            
             const parsed = parseTable();
             const plotContainerRect = plotDiv.getBoundingClientRect();
             Plotly.purge(plotDiv);
@@ -582,8 +596,8 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 const dim = datasets[0].coords[0].length;
                 let plotData = [];
                 switch (dim) {
-                    case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: 10 }, line: { color: ds.color } })); layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; if (isBarChartMode) layout.barmode = 'group'; break;
-                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name)).filter(trace => trace.x.length > 0); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: 8 }, line: { color: ds.color } })); } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color }, width: isBarChartMode ? barThickness : undefined })); layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; if (isBarChartMode) layout.barmode = 'group'; break;
+                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name, barThickness)); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color } })); } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
                     default: plotDiv.textContent = 'Порівняння підтримується для 2D та 3D.'; return;
                 }
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
@@ -594,9 +608,9 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 if (numCols === 0 || data.length === 0) { plotDiv.textContent = 'Додайте рядок-колонку аби згенерувати інформацію'; return; }
                 let plotData = [];
                 switch (numCols) {
-                    case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: 12 }, line: { color: selectedColor } }]; layout.title = axisTitles.x; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
-                    case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: 10 }, line: { color: selectedColor } }]; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; break;
-                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', ')); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: 8 }, line: { color: selectedColor } }]; } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor }, width: isBarChartMode ? barThickness : undefined }]; layout.title = axisTitles.x; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
+                    case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor }, width: isBarChartMode ? barThickness : undefined }]; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; break;
+                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', '), barThickness); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor } }]; } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
                     default: plotDiv.textContent = 'Генератор підтримує роботу лише у 3-х вимірах'; return;
                 }
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
