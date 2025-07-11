@@ -35,7 +35,7 @@ h2{margin:0;color:#333;flex-shrink:0}
 
 #data-table th,#data-table td{border:1px solid var(--border-color);padding:10px;text-align:center;position:relative;transition:font-size .2s ease-in-out}
 
-#data-table th{background-color:var(--header-bg-color);font-weight:500}
+#data-table thead tr th{background-color:var(--header-bg-color);font-weight:500}
 
 #data-table tbody tr:hover{background-color:var(--row-hover-color)}
 
@@ -100,6 +100,13 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
 #capture-progress-bar{height:100%;background:#4a90e2;width:0%;transition:width .3s}
 
 #capture-status{font-weight:500;text-align:center;max-width:80%;line-height:1.5}
+
+.coord-names-row th{background-color:#f0f6ff;border-bottom:2px solid var(--primary-color)}
+.coord-names-row:hover{background-color:transparent}
+.coord-name-editor{display:flex;align-items:center;justify-content:center;gap:15px;padding:5px 0}
+.coord-name-editor>div{display:inline-block}
+.coord-name-editor label{font-weight:500;color:var(--primary-color);margin-right:5px}
+.coord-name-editor div[contenteditable=true]{display:inline-block;border:1px solid var(--border-color);padding:4px 8px;border-radius:4px;background-color:#fff;min-width:80px;text-align:center}
     </style>
 </head>
 <body>
@@ -149,7 +156,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             <div id="data-table-container">
                 <table id="data-table">
                     <thead>
-                        <tr>
+                        <tr id="main-header-row">
                         </tr>
                     </thead>
                     <tbody>
@@ -171,7 +178,8 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const table = document.getElementById('data-table');
-        const thead = table.querySelector('thead tr');
+        const thead = table.querySelector('thead');
+        const mainHeaderRow = document.getElementById('main-header-row');
         const tbody = table.querySelector('tbody');
         const plotDiv = document.getElementById('plot-div');
         const addRowBtn = document.getElementById('add-row-btn');
@@ -222,7 +230,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             addColBtn.addEventListener('click', () => {
                 if (isCompareMode) { createColumn(); } 
                 else {
-                    const currentColCount = thead.cells.length;
+                    const currentColCount = mainHeaderRow.cells.length;
                     if (currentColCount >= 3) { showModal('У режимі єдиного набору даних доступно лише 3 стовпці.'); return; }
                     const newHeaderText = ["Координата Y", "Координата Z"][currentColCount - 1];
                     if (newHeaderText) { createColumn(newHeaderText); }
@@ -282,30 +290,62 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             });
         }
         
-        function showModal(message) { /* ... (no changes) ... */ }
-        function handleModeSwitch() { /* ... (no changes) ... */ }
-        function updateTableView() { /* ... (no changes) ... */ }
-        function createContentWrapper(th) { /* ... (no changes) ... */ }
-        function createColumn(headerText) { /* ... (no changes) ... */ }
-        function deleteColumn(colIndex) { /* ... (no changes) ... */ }
-        function createRow(rowData = []) { /* ... (no changes) ... */ }
-        function deleteRow(rowElement) { /* ... (no changes) ... */ }
-        function parseTable() { /* ... (no changes) ... */ }
-        function adjustTableLayout() { /* ... (no changes) ... */ }
-        function startRotation() { /* ... (no changes) ... */ }
-        function stopRotation(resetPosition = true) { /* ... (no changes) ... */ }
-        function create3DBarTraces(points, color, name, barSize = 0.8) { /* ... (no changes) ... */ }
-
-        // --- Functions with no changes from original ---
         function showModal(message){const modal=document.createElement('div');modal.textContent=message;Object.assign(modal.style,{position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',background:'var(--danger-color)',color:'white',padding:'10px 20px',borderRadius:'5px',zIndex:1000,boxShadow:'0 2px 10px rgba(0,0,0,0.2)',maxWidth:'90%',textAlign:'center',fontSize:'14px'});document.body.appendChild(modal);setTimeout(()=>modal.remove(),4e3)}
-        function handleModeSwitch(){isCompareMode=compareToggle.checked;colorPickerContainer.classList.toggle('hidden',isCompareMode);updateTableView();updatePlot();adjustTableLayout()}
-        function updateTableView(){Array.from(thead.cells).forEach((th,colIndex)=>{const existingPicker=th.querySelector('.column-color-picker');const contentWrapper=th.querySelector('.th-content-wrapper')||createContentWrapper(th);if(isCompareMode){if(!existingPicker){const picker=document.createElement('input');picker.type='color';picker.className='column-color-picker';picker.value=defaultColors[colIndex%defaultColors.length];contentWrapper.appendChild(picker)}contentWrapper.childNodes[0].nodeValue=`Набір даних ${colIndex+1} `}else{if(existingPicker){existingPicker.remove()}const headers=["Координата X","Координата Y","Координата Z"];contentWrapper.childNodes[0].nodeValue=headers[colIndex]||`Column ${colIndex+1}`}})}
+        
+        function addOrUpdateCoordNameRow() {
+            if (!isCompareMode) return;
+            let coordRow = thead.querySelector('.coord-names-row');
+            if (!coordRow) {
+                coordRow = thead.insertRow(0);
+                coordRow.className = 'coord-names-row';
+                const cell = document.createElement('th');
+                coordRow.appendChild(cell);
+
+                const editorContainer = document.createElement('div');
+                editorContainer.className = 'coord-name-editor';
+                editorContainer.innerHTML = `
+                    <div class="x-coord-editor">
+                        <label>Назва осі X:</label>
+                        <div contenteditable="true" data-axis="x">X</div>
+                    </div>
+                    <div class="y-coord-editor">
+                        <label>Назва осі Y:</label>
+                        <div contenteditable="true" data-axis="y">Y</div>
+                    </div>
+                    <div class="z-coord-editor" style="display: none;">
+                        <label>Назва осі Z:</label>
+                        <div contenteditable="true" data-axis="z">Z</div>
+                    </div>
+                `;
+                cell.appendChild(editorContainer);
+            }
+            const cell = coordRow.cells[0];
+            if (cell) {
+                cell.colSpan = mainHeaderRow.cells.length + 1; // +1 for delete button column
+            }
+        }
+
+        function removeCoordNameRow() {
+            const coordRow = thead.querySelector('.coord-names-row');
+            if (coordRow) coordRow.remove();
+        }
+
+        function handleModeSwitch(){isCompareMode=compareToggle.checked;colorPickerContainer.classList.toggle('hidden',isCompareMode);if(isCompareMode){addOrUpdateCoordNameRow()}else{removeCoordNameRow()}updateTableView();updatePlot();adjustTableLayout()}
+        
+        function updateTableView(){Array.from(mainHeaderRow.cells).forEach((th,colIndex)=>{const existingPicker=th.querySelector('.column-color-picker');const contentWrapper=th.querySelector('.th-content-wrapper')||createContentWrapper(th);if(isCompareMode){if(!existingPicker){const picker=document.createElement('input');picker.type='color';picker.className='column-color-picker';picker.value=defaultColors[colIndex%defaultColors.length];contentWrapper.appendChild(picker)}contentWrapper.childNodes[0].nodeValue=`Набір даних ${colIndex+1} `}else{if(existingPicker){existingPicker.remove()}const headers=["Координата X","Координата Y","Координата Z"];contentWrapper.childNodes[0].nodeValue=headers[colIndex]||`Column ${colIndex+1}`}})}
+        
         function createContentWrapper(th){const wrapper=document.createElement('div');wrapper.className='th-content-wrapper';while(th.firstChild&&th.firstChild.nodeType===3){wrapper.appendChild(th.firstChild)}th.insertBefore(wrapper,th.firstChild);return wrapper}
-        function createColumn(headerText){const colIndex=thead.cells.length;const th=document.createElement('th');th.setAttribute('contenteditable','true');const wrapper=document.createElement('div');wrapper.className='th-content-wrapper';if(isCompareMode){headerText=headerText||`Набір даних ${colIndex+1}`;wrapper.appendChild(document.createTextNode(headerText+' '));const picker=document.createElement('input');picker.type='color';picker.className='column-color-picker';picker.value=defaultColors[colIndex%defaultColors.length];wrapper.appendChild(picker)}else{headerText=headerText||"New Column";wrapper.appendChild(document.createTextNode(headerText))}th.appendChild(wrapper);const deleteBtn=document.createElement('button');deleteBtn.className='delete-btn delete-col-btn';deleteBtn.innerHTML='<i class="fas fa-times"></i>';th.appendChild(deleteBtn);thead.appendChild(th);for(const row of tbody.rows){const td=document.createElement('td');td.setAttribute('contenteditable','true');td.textContent=isCompareMode?'0,0':'0';row.insertBefore(td,row.cells[row.cells.length-1])}}
-        function deleteColumn(colIndex){if(!isCompareMode&&thead.cells.length<=1){showModal('Необхідно мати в наявності бодай одну колонку.');return}thead.deleteCell(colIndex);for(const row of tbody.rows){row.deleteCell(colIndex)}updatePlot();adjustTableLayout()}
-        function createRow(rowData=[]){const tr=tbody.insertRow();const colCount=thead.cells.length;for(let i=0;i<colCount;i++){const td=tr.insertCell();td.setAttribute('contenteditable','true');if(rowData[i]!==undefined){td.textContent=rowData[i]}else{td.textContent=isCompareMode?'0,0':'0'}}const deleteCell=tr.insertCell();const deleteBtn=document.createElement('button');deleteBtn.className='delete-btn delete-row-btn';deleteBtn.innerHTML='<i class="fas fa-trash-alt"></i>';deleteCell.appendChild(deleteBtn);deleteCell.style.border='none';deleteCell.style.background='none'}
+        
+        function createColumn(headerText){const colIndex=mainHeaderRow.cells.length;const th=document.createElement('th');th.setAttribute('contenteditable','true');const wrapper=document.createElement('div');wrapper.className='th-content-wrapper';if(isCompareMode){headerText=headerText||`Набір даних ${colIndex+1}`;wrapper.appendChild(document.createTextNode(headerText+' '));const picker=document.createElement('input');picker.type='color';picker.className='column-color-picker';picker.value=defaultColors[colIndex%defaultColors.length];wrapper.appendChild(picker)}else{headerText=headerText||"New Column";wrapper.appendChild(document.createTextNode(headerText))}th.appendChild(wrapper);const deleteBtn=document.createElement('button');deleteBtn.className='delete-btn delete-col-btn';deleteBtn.innerHTML='<i class="fas fa-times"></i>';th.appendChild(deleteBtn);mainHeaderRow.appendChild(th);for(const row of tbody.rows){const td=document.createElement('td');td.setAttribute('contenteditable','true');td.textContent=isCompareMode?'0,0':'0';row.insertBefore(td,row.cells[row.cells.length-1])}addOrUpdateCoordNameRow()}
+        
+        function deleteColumn(colIndex){if(!isCompareMode&&mainHeaderRow.cells.length<=1){showModal('Необхідно мати в наявності бодай одну колонку.');return}mainHeaderRow.deleteCell(colIndex);for(const row of tbody.rows){row.deleteCell(colIndex)}addOrUpdateCoordNameRow();updatePlot();adjustTableLayout()}
+        
+        function createRow(rowData=[]){const tr=tbody.insertRow();const colCount=mainHeaderRow.cells.length;for(let i=0;i<colCount;i++){const td=tr.insertCell();td.setAttribute('contenteditable','true');if(rowData[i]!==undefined){td.textContent=rowData[i]}else{td.textContent=isCompareMode?'0,0':'0'}}const deleteCell=tr.insertCell();const deleteBtn=document.createElement('button');deleteBtn.className='delete-btn delete-row-btn';deleteBtn.innerHTML='<i class="fas fa-trash-alt"></i>';deleteCell.appendChild(deleteBtn);deleteCell.style.border='none';deleteCell.style.background='none'}
+        
         function deleteRow(rowElement){rowElement.remove();updatePlot();adjustTableLayout()}
-        function parseTable(){if(isCompareMode){const datasets=Array.from(thead.cells).map((th,colIndex)=>{const wrapper=th.querySelector('.th-content-wrapper');const name=wrapper?wrapper.childNodes[0].nodeValue.trim():`Dataset ${colIndex+1}`;const colorPicker=th.querySelector('.column-color-picker');const color=colorPicker?colorPicker.value:'#000000';const coords=Array.from(tbody.rows).map(row=>{const cell=row.cells[colIndex];if(!cell)return[];return cell.textContent.split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n))}).filter(c=>c.length>0);return{name,color,coords}});return{datasets,isCompare:true}}else{const headers=Array.from(thead.cells).map(th=>{const wrapper=th.querySelector('.th-content-wrapper');return wrapper?wrapper.childNodes[0].nodeValue.trim():th.textContent.trim()});const data=Array.from(tbody.rows).map(row=>{const dataCells=Array.from(row.cells).slice(0,-1);return dataCells.map(cell=>{const value=parseFloat(cell.textContent);return isNaN(value)?0:value})});return{headers,data,isCompare:false}}}
+        
+        function parseTable(){if(isCompareMode){const datasets=Array.from(mainHeaderRow.cells).map((th,colIndex)=>{const wrapper=th.querySelector('.th-content-wrapper');const name=wrapper?wrapper.childNodes[0].nodeValue.trim():`Dataset ${colIndex+1}`;const colorPicker=th.querySelector('.column-color-picker');const color=colorPicker?colorPicker.value:'#000000';const coords=Array.from(tbody.rows).map(row=>{const cell=row.cells[colIndex];if(!cell)return[];return cell.textContent.split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n))}).filter(c=>c.length>0);return{name,color,coords}});return{datasets,isCompare:true}}else{const headers=Array.from(mainHeaderRow.cells).map(th=>{const wrapper=th.querySelector('.th-content-wrapper');return wrapper?wrapper.childNodes[0].nodeValue.trim():th.textContent.trim()});const data=Array.from(tbody.rows).map(row=>{const dataCells=Array.from(row.cells).slice(0,-1);return dataCells.map(cell=>{const value=parseFloat(cell.textContent);return isNaN(value)?0:value})});return{headers,data,isCompare:false}}}
+        
         function adjustTableLayout(){const tableContainer=document.getElementById('data-table-container');const table=document.getElementById('data-table');const BASE_FONT_SIZE=14;const MIN_FONT_SIZE=7;const containerHeight=tableContainer.clientHeight;const margin=window.innerHeight*0.02;const targetMaxHeight=containerHeight-margin;table.style.fontSize=BASE_FONT_SIZE+'px';const contentHeight=table.offsetHeight;if(contentHeight>targetMaxHeight){const scaleRatio=targetMaxHeight/contentHeight;let newFontSize=BASE_FONT_SIZE*scaleRatio;newFontSize=Math.max(newFontSize,MIN_FONT_SIZE);table.style.fontSize=newFontSize+'px'}else{table.style.fontSize=BASE_FONT_SIZE+'px'}}
         function startRotation(){if(rotationAnimationId)return;const radius=2.5;const z=1.75;let angle=Math.atan2(plotDiv.layout.scene.camera.eye.y,plotDiv.layout.scene.camera.eye.x);function rotate(){angle+=0.01;const eye_x=radius*Math.cos(angle);const eye_y=radius*Math.sin(angle);Plotly.relayout(plotDiv,{'scene.camera.eye':{x:eye_x,y:eye_y,z:z}});rotationAnimationId=requestAnimationFrame(rotate)}rotate()}
         function stopRotation(resetPosition=true){if(rotationAnimationId){cancelAnimationFrame(rotationAnimationId);rotationAnimationId=null}if(resetPosition){Plotly.relayout(plotDiv,{'scene.camera.eye':{x:1.75,y:1.75,z:1.75}})}}
@@ -321,12 +361,26 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             rotateToggleContainer.classList.add('hidden');
             barChartToggleContainer.classList.add('hidden');
             connectToggleContainer.classList.add('hidden');
-            
+
+            const coordRow = document.querySelector('.coord-names-row');
+            let axisTitles = {};
+
             if (parsed.isCompare) {
                 const datasets = parsed.datasets.filter(d => d.coords.length > 0 && d.coords[0].length > 0);
                 if (datasets.length > 0 && datasets[0].coords[0].length === 3) is3DPlot = true;
                 barChartToggleContainer.classList.remove('hidden');
                 connectToggleContainer.classList.remove('hidden');
+                
+                if (coordRow) {
+                    axisTitles.x = coordRow.querySelector('[data-axis="x"]').textContent.trim() || 'X';
+                    axisTitles.y = coordRow.querySelector('[data-axis="y"]').textContent.trim() || 'Y';
+                    axisTitles.z = coordRow.querySelector('[data-axis="z"]').textContent.trim() || 'Z';
+                    const zEditor = coordRow.querySelector('.z-coord-editor');
+                    if(zEditor) zEditor.style.display = is3DPlot ? 'inline-block' : 'none';
+                } else {
+                    axisTitles = { x: 'X', y: 'Y', z: 'Z' };
+                }
+
             } else {
                 const numCols = parsed.headers ? parsed.headers.length : 0;
                 if (numCols > 1) {
@@ -334,6 +388,9 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                     barChartToggleContainer.classList.remove('hidden');
                     if (numCols === 3) is3DPlot = true;
                 }
+                axisTitles.x = parsed.headers[0];
+                axisTitles.y = parsed.headers[1];
+                axisTitles.z = parsed.headers[2];
             }
             
             if (is3DPlot) rotateToggleContainer.classList.remove('hidden');
@@ -350,8 +407,8 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 const dim = datasets[0].coords[0].length;
                 let plotData = [];
                 switch (dim) {
-                    case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: 10 }, line: { color: ds.color } })); layout.xaxis = { title: 'X' }; layout.yaxis = { title: 'Y' }; if (isBarChartMode) layout.barmode = 'group'; break;
-                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name)).filter(trace => trace.x.length > 0); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: 8 }, line: { color: ds.color } })); } layout.scene = { xaxis: { title: 'X' }, yaxis: { title: 'Y' }, zaxis: { title: 'Z' }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: 10 }, line: { color: ds.color } })); layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; if (isBarChartMode) layout.barmode = 'group'; break;
+                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name)).filter(trace => trace.x.length > 0); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: 8 }, line: { color: ds.color } })); } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
                     default: plotDiv.textContent = 'Порівняння підтримується для 2D та 3D.'; return;
                 }
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
@@ -362,9 +419,9 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 if (numCols === 0 || data.length === 0) { plotDiv.textContent = 'Додайте рядок-колонку аби згенерувати інформацію'; return; }
                 let plotData = [];
                 switch (numCols) {
-                    case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: 12 }, line: { color: selectedColor } }]; layout.title = headers[0]; layout.xaxis = { title: headers[0] }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
-                    case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: 10 }, line: { color: selectedColor } }]; layout.xaxis = { title: headers[0] }; layout.yaxis = { title: headers[1] }; break;
-                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', ')); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: 8 }, line: { color: selectedColor } }]; } layout.scene = { xaxis: { title: headers[0] }, yaxis: { title: headers[1] }, zaxis: { title: headers[2] }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: 12 }, line: { color: selectedColor } }]; layout.title = axisTitles.x; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
+                    case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: 10 }, line: { color: selectedColor } }]; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; break;
+                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', ')); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: 8 }, line: { color: selectedColor } }]; } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
                     default: plotDiv.textContent = 'Генератор підтримує роботу лише у 3-х вимірах'; return;
                 }
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
