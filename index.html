@@ -166,8 +166,10 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                     <div class="download-container">
                         <button id="download-toggle-btn" class="btn" title="Завантажити"><i class="fas fa-download"></i></button>
                         <div id="download-options">
+                            <button id="download-png-btn" class="download-option"><i class="fas fa-image"></i> Image (PNG)</button>
                             <button id="download-gif-btn" class="download-option"><i class="fas fa-film"></i> Animation (GIF)</button>
-                            <button id="download-png-montage-btn" class="download-option"><i class="fas fa-th"></i> Image (PNG)</button>
+                            <button id="download-png-montage-btn" class="download-option"><i class="fas fa-th"></i> Montage (PNG)</button>
+                            <button id="download-csv-btn" class="download-option"><i class="fas fa-file-csv"></i> Data (CSV)</button>
                         </div>
                     </div>
                 </div>
@@ -206,8 +208,10 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         const addColBtn = document.getElementById('add-col-btn');
         const downloadToggleBtn = document.getElementById('download-toggle-btn');
         const downloadOptions = document.getElementById('download-options');
+        const downloadPngBtn = document.getElementById('download-png-btn');
         const downloadGifBtn = document.getElementById('download-gif-btn');
         const downloadPngMontageBtn = document.getElementById('download-png-montage-btn');
+        const downloadCsvBtn = document.getElementById('download-csv-btn');
         const colorPickerToggleBtn = document.getElementById('color-picker-toggle-btn');
         const colorPickerPopup = document.getElementById('color-picker-popup');
         const singleColorWrapper = document.getElementById('single-color-wrapper');
@@ -363,11 +367,18 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             });
 
             downloadToggleBtn.addEventListener('click', () => {
-                if (is3DPlot) {
-                    downloadOptions.style.display = downloadOptions.style.display === 'block' ? 'none' : 'block';
-                } else {
-                    captureScreenshot();
-                }
+                // Set visibility of options based on plot dimension
+                downloadPngBtn.style.display = is3DPlot ? 'none' : 'flex';
+                downloadGifBtn.style.display = is3DPlot ? 'flex' : 'none';
+                downloadPngMontageBtn.style.display = is3DPlot ? 'flex' : 'none';
+
+                // Toggle the dropdown
+                downloadOptions.style.display = downloadOptions.style.display === 'block' ? 'none' : 'block';
+            });
+            
+            downloadPngBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                captureScreenshot();
             });
             downloadGifBtn.addEventListener('click', () => {
                 downloadOptions.style.display = 'none';
@@ -378,6 +389,10 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 downloadOptions.style.display = 'none';
                 if (rotateToggle.checked) stopRotation(false);
                 captureStaticViewsPNG();
+            });
+            downloadCsvBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                downloadCSV();
             });
             cancelCaptureBtn.addEventListener('click', () => {
                 isCaptureCancelled = true;
@@ -790,6 +805,60 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             }
         }
         
+        function downloadCSV() {
+            let csv = [];
+            
+            // Handle special coordinate name row for compare mode
+            if (isCompareMode) {
+                const coordRow = table.querySelector('.coord-names-row');
+                if (coordRow) {
+                    const xName = coordRow.querySelector('[data-axis="x"]').textContent.trim();
+                    const yName = coordRow.querySelector('[data-axis="y"]').textContent.trim();
+                    let zName = '';
+                    const zEditor = coordRow.querySelector('.z-coord-editor');
+                    if (is3DPlot && zEditor && zEditor.style.display !== 'none') {
+                        zName = coordRow.querySelector('[data-axis="z"]').textContent.trim();
+                    }
+                    const axisHeaderParts = ['# Axis Names', `X: ${xName}`, `Y: ${yName}`];
+                    if (zName) {
+                        axisHeaderParts.push(`Z: ${zName}`);
+                    }
+                    csv.push(axisHeaderParts.join(','));
+                }
+            }
+        
+            // Get headers
+            const headers = Array.from(mainHeaderRow.cells).map(th => {
+                const wrapper = th.querySelector('.th-content-wrapper');
+                let text = (wrapper ? wrapper.childNodes[0].nodeValue : th.textContent).trim();
+                return `"${text.replace(/"/g, '""')}"`;
+            }).join(',');
+            csv.push(headers);
+            
+            // Get data rows
+            const numCols = mainHeaderRow.cells.length;
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = Array.from(row.cells).slice(0, numCols);
+                const rowData = cells.map(cell => {
+                    const text = cell.textContent.trim();
+                    return `"${text.replace(/"/g, '""')}"`;
+                }).join(',');
+                csv.push(rowData);
+            });
+        
+            const csvString = csv.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "plot_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
         initialize();
     });
     </script>
