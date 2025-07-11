@@ -811,11 +811,12 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             captureStatus.textContent = "Завантаження компонентів...";
             progressBar.style.width = '0%';
         
-            // --- SMOOTHNESS PARAMETERS ---
-            // More frames = smoother rotation but larger file size.
-            const numFrames = 72; 
-            // Frame delay in milliseconds. 40ms = 25 FPS (1000 / 40 = 25).
-            const frameDelay = 40; 
+            // --- SMOOTHNESS & SPEED PARAMETERS ---
+            // High frame count for a slow, detailed rotation (360 degrees / 180 frames = 2 degrees per frame)
+            const numFrames = 180;
+            // Frame delay in milliseconds. 40ms = 25 FPS, which provides fluid motion.
+            const frameDelay = 40;
+            // This results in a slow and smooth 7.2-second animation (180 frames * 40ms).
             // --- END OF PARAMETERS ---
 
             const angleStep = 2 * Math.PI / numFrames;
@@ -867,7 +868,6 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                     const eye_y = radius * Math.sin(angle);
         
                     await Plotly.relayout(plotDiv, { 'scene.camera.eye': { x: eye_x, y: eye_y, z: z } });
-                    // Wait long enough for render, but not too long to slow down capture.
                     await new Promise(resolve => setTimeout(resolve, 50)); 
         
                     const imgData = await Plotly.toImage(plotDiv, { format: 'png' });
