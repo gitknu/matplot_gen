@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор графіків</title>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/ffmpeg.min.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.8/dist/ffmpeg.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -824,11 +824,13 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                     ffmpegLoading.style.display = 'block';
                     captureStatus.textContent = "Завантаження відеокодеку...";
                     
-                    ffmpeg = createFFmpeg({
+                    // Use createFFmpeg with corePath for reliable loading
+                    ffmpeg = FFmpeg.createFFmpeg({
                         log: false,
                         progress: ({ ratio }) => {
                             progressBar.style.width = `${ratio * 100}%`;
-                        }
+                        },
+                        corePath: 'https://unpkg.com/@ffmpeg/core@0.12.4/dist/ffmpeg-core.js'
                     });
                     
                     await ffmpeg.load();
