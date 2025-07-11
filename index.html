@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор графіків</title>
     <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -133,13 +133,6 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
     max-width: 80%;
     line-height: 1.5;
 }
-#gif-loading {
-    display: none;
-    margin-top: 20px;
-}
-#temp-canvas {
-    display: none;
-}
     </style>
 </head>
 <body>
@@ -201,9 +194,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         <div id="capture-progress">
             <div id="capture-progress-bar"></div>
         </div>
-        <div id="gif-loading">Створення анімації...</div>
     </div>
-    <canvas id="temp-canvas"></canvas>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         const table = document.getElementById('data-table');
@@ -228,8 +219,6 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         const captureOverlay = document.getElementById('capture-overlay');
         const captureStatus = document.getElementById('capture-status');
         const progressBar = document.getElementById('capture-progress-bar');
-        const tempCanvas = document.getElementById('temp-canvas');
-        const gifLoading = document.getElementById('gif-loading');
         let isCompareMode = false;
         let connectPoints = false;
         let isBarChartMode = false;
@@ -817,98 +806,95 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
         
         async function captureRotationGIF() {
             captureOverlay.style.display = 'flex';
-            captureStatus.textContent = "Підготовка до захоплення відео...";
+            captureStatus.textContent = "Підготовка до захоплення GIF...";
             progressBar.style.width = '0%';
-            gifLoading.style.display = 'block';
+            
+            const numFrames = 30; // Зменшено для швидкості
+            const angleStep = 2 * Math.PI / numFrames;
+            const radius = 2.5;
+            const z = 1.75;
             
             stopRotation(false);
             
             try {
-                const numFrames = 30;
-                const angleStep = 2 * Math.PI / numFrames;
-                const radius = 2.5;
-                const z = 1.75;
+                // Перевірка наявності GIF.js
+                if (typeof GIF === 'undefined') {
+                    throw new Error('GIF.js не завантажено');
+                }
                 
-                // Set up canvas
-                const width = plotDiv.clientWidth;
-                const height = plotDiv.clientHeight;
-                tempCanvas.width = width;
-                tempCanvas.height = height;
-                const ctx = tempCanvas.getContext('2d');
-                
-                // Create GIF
+                // Створення GIF енкодера
                 const gif = new GIF({
                     workers: 2,
                     quality: 10,
-                    width: width,
-                    height: height,
-                    repeat: 0, // 0 = loop forever
-                    background: '#ffffff'
+                    workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
                 });
                 
-                // Capture frames
+                // Збір кадрів
+                captureStatus.textContent = "Захоплення кадрів...";
+                const image = new Image();
+                
                 for (let i = 0; i < numFrames; i++) {
                     const angle = i * angleStep;
                     const eye_x = radius * Math.cos(angle);
                     const eye_y = radius * Math.sin(angle);
                     
-                    // Update camera
+                    // Оновлення позиції камери
                     await Plotly.relayout(plotDiv, {
                         'scene.camera.eye': { x: eye_x, y: eye_y, z: z }
                     });
                     
-                    // Wait for render
+                    // Зачекати оновлення графіку
                     await new Promise(resolve => setTimeout(resolve, 50));
                     
-                    // Capture frame as image
-                    const url = await Plotly.toImage(plotDiv, {
-                        format: 'png',
-                        width: width,
-                        height: height
+                    // Захоплення кадру
+                    const dataURL = await Plotly.toImage(plotDiv, {
+                        format: 'jpeg',
+                        width: plotDiv.clientWidth,
+                        height: plotDiv.clientHeight
                     });
                     
-                    // Load image and add to GIF
-                    await new Promise(resolve => {
-                        const img = new Image();
-                        img.onload = () => {
-                            ctx.clearRect(0, 0, width, height);
-                            ctx.drawImage(img, 0, 0, width, height);
-                            gif.addFrame(ctx, { copy: true, delay: 70 }); // 70ms delay per frame
-                            resolve();
-                        };
-                        img.src = url;
+                    // Завантаження зображення
+                    await new Promise((resolve, reject) => {
+                        image.onload = resolve;
+                        image.onerror = reject;
+                        image.src = dataURL;
                     });
                     
-                    // Update progress
+                    // Додавання кадру до GIF
+                    gif.addFrame(image, { delay: 100 }); // 100ms затримка між кадрами
+                    
+                    // Оновлення прогресу
                     progressBar.style.width = `${((i+1) / numFrames) * 100}%`;
-                    captureStatus.textContent = `Захоплення кадру ${i+1}/${numFrames}...`;
                 }
                 
-                // Generate GIF
-                gif.on('finished', function(blob) {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'rotating_plot.gif';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        captureOverlay.style.display = 'none';
-                    }, 100);
-                });
-                
+                // Початок кодування
+                captureStatus.textContent = "Кодування GIF...";
                 gif.render();
                 
-            } catch (error) {
-                console.error("GIF creation error:", error);
-                showModal('Помилка при створенні GIF');
-                captureOverlay.style.display = 'none';
-            } finally {
-                gifLoading.style.display = 'none';
+                // Очікування завершення
+                const blob = await new Promise((resolve, reject) => {
+                    gif.on('finished', resolve);
+                    gif.on('error', reject);
+                });
                 
-                // Restart rotation if toggle is still checked
+                // Створення посилання для скачування
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'rotating_plot.gif';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+            } catch (error) {
+                console.error("GIF capture error:", error);
+                showModal('Помилка при створенні GIF: ' + error.message);
+            } finally {
+                captureOverlay.style.display = 'none';
+                // Перезапуск обертання якщо потрібно
                 if (rotateToggle.checked) {
                     startRotation();
                 }
