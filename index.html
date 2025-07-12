@@ -59,7 +59,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
 
 .btn{padding:10px 15px;border:none;border-radius:6px;background-color:var(--primary-color);color:#fff;cursor:pointer;font-size:14px;transition:background-color .2s, transform .2s, box-shadow .2s;display:flex;align-items:center;gap:8px;height:40px;box-sizing:border-box}
 
-body.is-dragging-file #upload-btn {
+body.is-dragging-file #download-toggle-btn {
     background-color: var(--primary-hover-color);
     transform: scale(1.1);
     box-shadow: 0 0 15px rgba(74, 144, 226, 0.6);
@@ -183,11 +183,12 @@ body.is-dragging-file #upload-btn {
                     </div>
                     <button id="add-row-btn" class="btn" title="Додати рядок"><i class="fas fa-plus"></i><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm0 7h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/></svg></button>
                     <button id="add-col-btn" class="btn" title="Додати колонку"><i class="fas fa-plus"></i><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm7 0h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/></svg></button>
-                    <button id="upload-btn" class="btn" title="Завантажити дані (CSV)"><i class="fas fa-upload"></i></button>
                     <input type="file" id="csv-upload-input" accept=".csv,text/csv" style="display:none;">
                     <div class="download-container">
-                        <button id="download-toggle-btn" class="btn" title="Завантажити"><i class="fas fa-download"></i></button>
+                        <button id="download-toggle-btn" class="btn" title="Завантажити / Додати"><i class="fas fa-download"></i></button>
                         <div id="download-options">
+                            <button id="upload-csv-btn" class="download-option"><i class="fas fa-upload"></i> Додати (CSV)</button>
+                            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 5px 0;">
                             <button id="download-png-btn" class="download-option"><i class="fas fa-image"></i> Зображення (PNG)</button>
                             <button id="download-gif-btn" class="download-option"><i class="fas fa-film"></i> Анімація (GIF)</button>
                             <button id="download-png-montage-btn" class="download-option"><i class="fas fa-th"></i> Зображення (PNG)</button>
@@ -229,10 +230,10 @@ body.is-dragging-file #upload-btn {
         const plotDiv = document.getElementById('plot-div');
         const addRowBtn = document.getElementById('add-row-btn');
         const addColBtn = document.getElementById('add-col-btn');
-        const uploadBtn = document.getElementById('upload-btn');
         const csvUploadInput = document.getElementById('csv-upload-input');
         const downloadToggleBtn = document.getElementById('download-toggle-btn');
         const downloadOptions = document.getElementById('download-options');
+        const uploadCsvBtn = document.getElementById('upload-csv-btn');
         const downloadPngBtn = document.getElementById('download-png-btn');
         const downloadGifBtn = document.getElementById('download-gif-btn');
         const downloadPngMontageBtn = document.getElementById('download-png-montage-btn');
@@ -314,7 +315,7 @@ body.is-dragging-file #upload-btn {
                 updatePalette(); updatePlot(); adjustTableLayout();
             });
             
-            // Global Drag & Drop Listeners to highlight the upload button
+            // Global Drag & Drop Listeners to highlight the download/upload button
             window.addEventListener('dragenter', (e) => {
                 if (e.dataTransfer.types.includes('Files')) {
                     e.preventDefault();
@@ -338,16 +339,20 @@ body.is-dragging-file #upload-btn {
                 document.body.classList.remove('is-dragging-file');
             });
 
-            // Upload button specific listeners
-            uploadBtn.addEventListener('click', () => csvUploadInput.click());
+            // File input listeners
             csvUploadInput.addEventListener('change', handleCsvUpload);
-            uploadBtn.addEventListener('drop', (e) => {
+
+            // Download/Upload button listeners
+            uploadCsvBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                csvUploadInput.click();
+            });
+            downloadToggleBtn.addEventListener('drop', (e) => {
                 e.stopPropagation(); // Prevent the window's drop handler from firing
                 if (e.dataTransfer.files.length > 0) {
                     processUploadedFile(e.dataTransfer.files[0]);
                 }
             });
-
 
             table.addEventListener('input', (e) => {
                 if (e.target.matches('[contenteditable="true"]')) { setTimeout(()=>{updatePlot();}, 50); }
