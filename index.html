@@ -185,7 +185,7 @@ body.is-dragging-file #download-toggle-btn {
                     <button id="add-col-btn" class="btn" title="Додати колонку"><i class="fas fa-plus"></i><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm7 0h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/></svg></button>
                     <input type="file" id="csv-upload-input" accept=".csv,text/csv" style="display:none;">
                     <div class="download-container">
-                        <button id="download-toggle-btn" class="btn" title="Завантажити / Додати"><i class="fas fa-download"></i></button>
+                        <button id="download-toggle-btn" class="btn" title="Завантажити / Додати"><i class="fas fa-arrows-up-down"></i></button>
                         <div id="download-options">
                             <button id="upload-csv-btn" class="download-option"><i class="fas fa-upload"></i> Додати (CSV)</button>
                             <hr style="border: none; border-top: 1px solid var(--border-color); margin: 5px 0;">
@@ -343,7 +343,7 @@ body.is-dragging-file #download-toggle-btn {
                 csvUploadInput.click();
             });
             downloadToggleBtn.addEventListener('drop', (e) => {
-                e.preventDefault(); // <-- THE FIX: Explicitly prevent default on the drop target
+                e.preventDefault(); 
                 e.stopPropagation(); 
                 if (e.dataTransfer.files.length > 0) {
                     processUploadedFile(e.dataTransfer.files[0]);
