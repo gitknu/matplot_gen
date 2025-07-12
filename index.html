@@ -686,11 +686,10 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             const markerThicknessValue = parseFloat(thicknessSlider.value);
             const connectThicknessValue = parseFloat(connectThicknessSlider.value);
             
-            // The constraint is that line width cannot be greater than marker size.
-            // These calculations now allow for a direct comparison and adjustment.
-            const markerSize = markerThicknessValue / 4;
-            const lineWidth = connectThicknessValue / 4;
+            const markerSize = markerThicknessValue / 8;
+            const lineWidth = connectThicknessValue / 8;
             const barThickness = markerThicknessValue / 100;
+            const VIZ_CORRECTION_3D = 2.75;
 
             const parsed = parseTable(); const plotContainerRect = plotDiv.getBoundingClientRect();
             Plotly.purge(plotDiv); plotDiv.innerHTML = ''; is3DPlot = false;
@@ -725,7 +724,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 const dim = datasets[0].coords[0].length; let plotData = [];
                 switch (dim) {
                     case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth }, width: isBarChartMode ? barThickness : undefined })); layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; if (isBarChartMode) layout.barmode = 'group'; break;
-                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name, barThickness)); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth } })); } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name, barThickness)); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth * VIZ_CORRECTION_3D } })); } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
                     default: plotDiv.textContent = 'Порівняння підтримується для 2D та 3D.'; return;
                 }
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
@@ -736,7 +735,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 switch (numCols) {
                     case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth }, width: isBarChartMode ? barThickness : undefined }]; layout.title = axisTitles.x; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
                     case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth }, width: isBarChartMode ? barThickness : undefined }]; layout.xaxis = { title: axisTitles.x }; layout.yaxis = { title: axisTitles.y }; break;
-                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', '), barThickness); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth } }]; } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', '), barThickness); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth * VIZ_CORRECTION_3D } }]; } layout.scene = { xaxis: { title: axisTitles.x }, yaxis: { title: axisTitles.y }, zaxis: { title: axisTitles.z }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
                     default: plotDiv.textContent = 'Генератор підтримує роботу лише у 3-х вимірах'; return;
                 }
                 Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
