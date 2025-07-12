@@ -185,15 +185,15 @@ body.is-dragging-file #download-toggle-btn {
                     <button id="add-col-btn" class="btn" title="Додати колонку"><i class="fas fa-plus"></i><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm7 0h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/></svg></button>
                     <input type="file" id="csv-upload-input" accept=".csv,text/csv" style="display:none;">
                     <div class="download-container">
-                        <button id="download-toggle-btn" class="btn" title="Завантажити / Додати"><i class="fas fa-arrows-up-down"></i></button>
+                        <button id="download-toggle-btn" class="btn" title="Завантажити / Додати"><i class="fas fa-box-archive"></i></button>
                         <div id="download-options">
-                            <button id="upload-csv-btn" class="download-option"><i class="fas fa-upload"></i> Додати (CSV)</button>
+                            <button id="upload-csv-btn" class="download-option"><i class="fas fa-upload"></i> Заповнити автоматично (CSV)</button>
                             <hr style="border: none; border-top: 1px solid var(--border-color); margin: 5px 0;">
-                            <button id="download-png-btn" class="download-option"><i class="fas fa-image"></i> Зображення (PNG)</button>
-                            <button id="download-gif-btn" class="download-option"><i class="fas fa-film"></i> Анімація (GIF)</button>
-                            <button id="download-png-montage-btn" class="download-option"><i class="fas fa-th"></i> Зображення (PNG)</button>
-                            <button id="download-csv-btn" class="download-option"><i class="fas fa-file-csv"></i> Дані (CSV)</button>
-                            <button id="download-html-btn" class="download-option"><i class="fas fa-code"></i> Генератор (HTML)</button>
+                            <button id="download-png-btn" class="download-option"><i class="fas fa-image"></i> Зберегти зображення (PNG)</button>
+                            <button id="download-gif-btn" class="download-option"><i class="fas fa-film"></i> Зберегти анімацію (GIF)</button>
+                            <button id="download-png-montage-btn" class="download-option"><i class="fas fa-th"></i> Зберегти зображення (PNG)</button>
+                            <button id="download-csv-btn" class="download-option"><i class="fas fa-file-csv"></i> Зберегти введені дані (CSV)</button>
+                            <button id="download-html-btn" class="download-option"><i class="fas fa-code"></i> Зберегти генератор (HTML)</button>
                         </div>
                     </div>
                 </div>
@@ -321,12 +321,22 @@ body.is-dragging-file #download-toggle-btn {
                 if (e.dataTransfer.types.includes('Files')) {
                     dragCounter++;
                     document.body.classList.add('is-dragging-file');
+                    const downloadToggleBtnIcon = downloadToggleBtn.querySelector('i');
+                    if (downloadToggleBtnIcon) {
+                        downloadToggleBtnIcon.classList.remove('fa-box-archive');
+                        downloadToggleBtnIcon.classList.add('fa-upload');
+                    }
                 }
             });
             window.addEventListener('dragleave', () => {
                 dragCounter--;
                 if (dragCounter === 0) {
                     document.body.classList.remove('is-dragging-file');
+                    const downloadToggleBtnIcon = downloadToggleBtn.querySelector('i');
+                    if (downloadToggleBtnIcon) {
+                        downloadToggleBtnIcon.classList.remove('fa-upload');
+                        downloadToggleBtnIcon.classList.add('fa-box-archive');
+                    }
                 }
             });
             window.addEventListener('dragover', (e) => e.preventDefault());
@@ -334,6 +344,11 @@ body.is-dragging-file #download-toggle-btn {
                 e.preventDefault();
                 dragCounter = 0;
                 document.body.classList.remove('is-dragging-file');
+                const downloadToggleBtnIcon = downloadToggleBtn.querySelector('i');
+                if (downloadToggleBtnIcon) {
+                    downloadToggleBtnIcon.classList.remove('fa-upload');
+                    downloadToggleBtnIcon.classList.add('fa-box-archive');
+                }
             });
 
             // File input and combined button listeners
@@ -344,7 +359,6 @@ body.is-dragging-file #download-toggle-btn {
             });
             downloadToggleBtn.addEventListener('drop', (e) => {
                 e.preventDefault(); 
-                e.stopPropagation(); 
                 if (e.dataTransfer.files.length > 0) {
                     processUploadedFile(e.dataTransfer.files[0]);
                 }
@@ -1262,4 +1276,3 @@ body.is-dragging-file #download-toggle-btn {
     });
     </script>
 </body>
-</html>
