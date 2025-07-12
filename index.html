@@ -296,6 +296,7 @@ body.is-dragging-file #download-toggle-btn {
         }
         
         function setupEventListeners() {
+            addRowBtn.addEventListener('click', () => { createRow(); updatePlot(); adjustTableLayout(); });
             addColBtn.addEventListener('click', () => {
                 const currentColCount = mainHeaderRow.cells.length;
                 if (isCompareMode) {
@@ -315,40 +316,35 @@ body.is-dragging-file #download-toggle-btn {
                 updatePalette(); updatePlot(); adjustTableLayout();
             });
             
-            // Global Drag & Drop Listeners to highlight the download/upload button
+            // Global Drag & Drop Listeners
             window.addEventListener('dragenter', (e) => {
                 if (e.dataTransfer.types.includes('Files')) {
-                    e.preventDefault();
                     dragCounter++;
                     document.body.classList.add('is-dragging-file');
                 }
             });
-            window.addEventListener('dragleave', (e) => {
-                e.preventDefault();
+            window.addEventListener('dragleave', () => {
                 dragCounter--;
                 if (dragCounter === 0) {
                     document.body.classList.remove('is-dragging-file');
                 }
             });
-            window.addEventListener('dragover', (e) => {
-                e.preventDefault(); // This is necessary to allow dropping
-            });
+            window.addEventListener('dragover', (e) => e.preventDefault());
             window.addEventListener('drop', (e) => {
-                e.preventDefault(); // Prevent browser from opening the file
+                e.preventDefault();
                 dragCounter = 0;
                 document.body.classList.remove('is-dragging-file');
             });
 
-            // File input listeners
+            // File input and combined button listeners
             csvUploadInput.addEventListener('change', handleCsvUpload);
-
-            // Download/Upload button listeners
             uploadCsvBtn.addEventListener('click', () => {
                 downloadOptions.style.display = 'none';
                 csvUploadInput.click();
             });
             downloadToggleBtn.addEventListener('drop', (e) => {
-                e.stopPropagation(); // Prevent the window's drop handler from firing
+                e.preventDefault(); // <-- THE FIX: Explicitly prevent default on the drop target
+                e.stopPropagation(); 
                 if (e.dataTransfer.files.length > 0) {
                     processUploadedFile(e.dataTransfer.files[0]);
                 }
@@ -413,7 +409,6 @@ body.is-dragging-file #download-toggle-btn {
             const thicknessLabel = document.querySelector('#thickness-slider-container label');
             thicknessLabel.addEventListener('click', () => {
                 thicknessSlider.value = 50;
-                // Adjust connect slider if necessary after reset
                 if (parseFloat(connectThicknessSlider.value) > 50) {
                     connectThicknessSlider.value = 50;
                 }
