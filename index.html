@@ -886,17 +886,76 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
             URL.revokeObjectURL(url);
         }
 
-        function downloadHTML() {
-            const htmlContent = document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", "graph-generator.html");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+        async function downloadHTML() {
+            try {
+                const pageUrl = window.location.href;
+
+                // Handle file:// protocol or blob URLs, where fetch will fail or is not applicable.
+                if (!pageUrl.startsWith('http')) {
+                     showModal('Завантаження оригінального файлу неможливе з поточного розташування. Збережено поточний стан.');
+                     const fallbackHtmlContent = document.documentElement.outerHTML;
+                     const blob = new Blob([fallbackHtmlContent], { type: 'text/html;charset=utf-8;' });
+                     const url = URL.createObjectURL(blob);
+                     const link = document.createElement("a");
+                     link.setAttribute("href", url);
+                     link.setAttribute("download", "graph-generator-snapshot.html");
+                     document.body.appendChild(link);
+                     link.click();
+                     document.body.removeChild(link);
+                     URL.revokeObjectURL(url);
+                     return;
+                }
+
+                isCaptureCancelled = false;
+                captureOverlay.style.display = 'flex';
+                captureStatus.textContent = "Завантаження оригінального файлу...";
+                progressBar.style.width = '0%';
+                
+                const response = await fetch(pageUrl);
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                
+                progressBar.style.width = '50%';
+                const htmlContent = await response.text();
+                progressBar.style.width = '100%';
+
+                const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                
+                const path = new URL(pageUrl).pathname;
+                const filename = path.substring(path.lastIndexOf('/') + 1) || 'graph-generator.html';
+
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                setTimeout(() => {
+                    if (!isCaptureCancelled) {
+                       captureOverlay.style.display = 'none';
+                    }
+                }, 500);
+
+            } catch (error) {
+                if (isCaptureCancelled) return;
+                console.error("Error downloading original HTML:", error);
+                captureOverlay.style.display = 'none';
+                showModal('Помилка завантаження. Збережено поточний стан сторінки.');
+                const fallbackHtmlContent = document.documentElement.outerHTML;
+                const blob = new Blob([fallbackHtmlContent], { type: 'text/html;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", "graph-generator-snapshot.html");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
         }
 
         initialize();
