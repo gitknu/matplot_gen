@@ -898,7 +898,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                      const url = URL.createObjectURL(blob);
                      const link = document.createElement("a");
                      link.setAttribute("href", url);
-                     link.setAttribute("download", "graph-generator-snapshot.html");
+                     link.setAttribute("download", "index-snapshot.html");
                      document.body.appendChild(link);
                      link.click();
                      document.body.removeChild(link);
@@ -926,7 +926,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 link.href = url;
                 
                 const path = new URL(pageUrl).pathname;
-                const filename = path.substring(path.lastIndexOf('/') + 1) || 'graph-generator.html';
+                const filename = path.substring(path.lastIndexOf('/') + 1) || 'index.html';
 
                 link.download = filename;
                 document.body.appendChild(link);
@@ -950,7 +950,7 @@ th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement("a");
                 link.setAttribute("href", url);
-                link.setAttribute("download", "graph-generator-snapshot.html");
+                link.setAttribute("download", "index-snapshot.html");
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
