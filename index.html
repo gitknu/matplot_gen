@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор графіків</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+:root{--primary-color:#4a90e2;--primary-hover-color:#357abd;--danger-color:#e24a4a;--danger-hover-color:#c93e3e;--background-color:#f4f7f9;--container-bg-color:#fff;--text-color:#333;--border-color:#e0e0e0;--header-bg-color:#f8f9fa;--row-hover-color:#eff5fc}
+
+body{font-family:'Montserrat',sans-serif;margin:0;padding:0;background-color:var(--background-color);color:var(--text-color);height:100vh;overflow:hidden}
+
+.main-container{display:flex;height:100vh;width:100%}
+
+#left-pane,#right-pane{height:100%;overflow-y:auto;padding:20px;box-sizing:border-box}
+
+#left-pane{flex:0 0 70%;background-color:var(--container-bg-color);overflow-y:hidden;display:flex;flex-direction:column}
+
+#right-pane{flex:1;border-left:2px solid var(--border-color);display:flex;align-items:center;justify-content:center;position:relative}
+
+#plot-div{width:100%;height:100%;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2em;color:#777;text-align:center}
+
+.header-container{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:2px solid var(--border-color);flex-shrink:0;flex-wrap:wrap;gap:10px}
+
+h2{margin:0;color:#333;flex-shrink:0}
+
+#data-table-container{margin-top:20px;overflow:hidden;flex-grow:1}
+
+#data-table{width:100%;border-collapse:collapse}
+
+#data-table th,#data-table td{border:1px solid var(--border-color);padding:10px;text-align:center;position:relative;transition:font-size .2s ease-in-out, background-color .2s ease-in-out}
+
+#data-table thead tr th{background-color:var(--header-bg-color);font-weight:500}
+
+#data-table tbody tr:hover{background-color:var(--row-hover-color)}
+
+[contenteditable=true]{outline:2px solid transparent;transition:outline .2s}
+
+[contenteditable=true]:focus{outline:2px solid var(--primary-color);background-color:#fff}
+
+.invalid-cell { background-color: rgba(184, 0, 0, 0.1) !important; }
+
+.delete-btn{background:0 0;border:none;color:#aaa;cursor:pointer;font-size:1em;position:absolute;top:50%;transform:translateY(-50%);opacity:0;transition:opacity .2s,color .2s}
+
+.delete-col-btn{right:5px}
+
+.delete-row-btn{right:5px}
+
+th:hover .delete-col-btn,tr:hover .delete-row-btn{opacity:1}
+
+.delete-btn:hover{color:var(--danger-color)}
+
+.controls{display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+
+.btn{padding:10px 15px;border:none;border-radius:6px;background-color:var(--primary-color);color:#fff;cursor:pointer;font-size:14px;transition:background-color .2s, transform .2s, box-shadow .2s;display:flex;align-items:center;gap:8px;height:40px;box-sizing:border-box}
+
+@keyframes flicker-animation {
+    0% {
+        background-color: var(--primary-hover-color);
+        box-shadow: 0 0 15px rgba(74, 144, 226, 0.6);
+    }
+    50% {
+        background-color: #5aaaff;
+        box-shadow: 0 0 25px rgba(90, 170, 255, 0.9);
+    }
+    100% {
+        background-color: var(--primary-hover-color);
+        box-shadow: 0 0 15px rgba(74, 144, 226, 0.6);
+    }
+}
+
+body.is-dragging-file #download-toggle-btn {
+    transform: scale(1.1);
+    animation: flicker-animation 1.5s infinite ease-in-out;
+}
+
+.btn:hover{background-color:var(--primary-hover-color)}.color-picker-container{position:relative}
+
+#color-picker-popup{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:100;background-color:var(--container-bg-color);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:10px;width:240px}
+
+.color-picker-wrapper{display:flex;align-items:center;height:40px;border:2px solid var(--border-color);border-radius:6px;padding:0 5px 0 8px;box-sizing:border-box;background-color:var(--container-bg-color);transition:border-color .2s}
+
+.color-picker-wrapper:focus-within{border-color:var(--primary-color)}
+
+#color-picker-popup input[type=color], #color-picker{padding:0;width:28px;height:28px;border:none;cursor:pointer;background-color:transparent}
+
+#color-picker-popup input[type=text], #hex-input{border:none;outline:0;width:70px;height:100%;padding-left:8px;font-size:14px;font-family:'Montserrat',sans-serif;background-color:transparent;color:var(--text-color)}
+
+.compare-control, .control-wrapper{display:flex;align-items:center;gap:8px;height:40px;padding:0 10px;background-color:#eaf2fa;border-radius:6px;transition:opacity .2s}
+
+.compare-control label, .control-wrapper label{cursor:pointer;font-size:14px;font-weight:500;color:var(--primary-color);display:flex;align-items:center}
+
+#compare-toggle,#bar-chart-toggle,#rotate-toggle{cursor:pointer;accent-color:var(--primary-color)}
+
+#thickness-slider, #connect-thickness-slider, #font-size-slider{cursor:pointer;width:40px;accent-color:var(--primary-color)}
+
+.th-content-wrapper{display:flex;align-items:center;justify-content:center;gap:5px}
+
+.download-container{position:relative}
+
+#download-options{display:none;position:absolute;top:calc(100% + 5px);right:0;z-index:100;background-color:var(--container-bg-color);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:5px;width:max-content;border:1px solid var(--border-color)}
+
+.download-option{width:100%;background:none;border:none;text-align:left;padding:8px 12px;cursor:pointer;border-radius:6px;font-size:14px;font-family:'Montserrat',sans-serif;color:var(--text-color);display:flex;align-items:center;gap:10px;box-sizing:border-box}
+
+.download-option:hover{background-color:var(--row-hover-color)}
+
+.download-option i{width:16px;text-align:center;color:#666}
+
+#rotate-toggle-container,#connect-toggle-container,#bar-chart-toggle-container,#compare-toggle-container,#thickness-slider-container, #font-size-slider-container{display:flex;align-items:center;height:40px;visibility:visible;position:relative}
+
+#rotate-toggle-container.hidden,#connect-toggle-container.hidden,#bar-chart-toggle-container.hidden{opacity:0;position:absolute;pointer-events:none}
+
+#capture-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);display:flex;justify-content:center;align-items:center;z-index:10000;color:#fff;font-size:18px;flex-direction:column;gap:20px}
+
+#capture-progress{width:300px;height:20px;background:#555;border-radius:10px;overflow:hidden}
+
+#capture-progress-bar{height:100%;background:#4a90e2;width:0%;transition:width .3s}
+
+#capture-status{font-weight:500;text-align:center;max-width:80%;line-height:1.5}
+
+.coord-names-row th{background-color:#f0f6ff;border-bottom:2px solid var(--primary-color)}
+.coord-names-row:hover{background-color:transparent}
+.coord-name-editor{display:flex;align-items:center;justify-content:center;gap:15px;padding:5px 0}
+.coord-name-editor>div{display:inline-block}
+.coord-name-editor label{font-weight:500;color:var(--primary-color);margin-right:5px}
+.coord-name-editor div[contenteditable=true]{display:inline-block;border:1px solid var(--border-color);padding:4px 8px;border-radius:4px;background-color:#fff;min-width:80px;text-align:center}
+
+.column-color-indicator{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid var(--border-color);vertical-align:middle;margin-left:8px}
+.color-picker-list-item{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.color-picker-list-item:last-child{margin-bottom:0}
+.color-picker-list-item label{font-size:14px;margin-right:10px;font-weight:500}
+#multi-color-list{display:none}
+
+#cancel-capture-btn{position:absolute;top:20px;right:30px;font-size:30px;color:#fff;background:0 0;border:none;cursor:pointer;line-height:1;opacity:.8;transition:opacity .2s;z-index:10001}
+#cancel-capture-btn:hover{opacity:1}
+
+.custom-modal .modal-close-btn{position:absolute;top:50%;right:10px;transform:translateY(-50%);width:20px;height:20px;cursor:pointer}
+.custom-modal .modal-close-btn svg{width:100%;height:100%;transform:rotate(-90deg)}
+.custom-modal .modal-close-btn .loader-ring{stroke:rgba(255,255,255,.3);transition:opacity .3s ease}
+.custom-modal .modal-close-btn .loader-ring-progress{stroke:rgba(255,255,255,.9);stroke-dasharray:100 100;stroke-dashoffset:100;animation:countdown-loader 4s linear forwards;transition:opacity .3s ease}
+@keyframes countdown-loader{to{stroke-dashoffset:0}}
+.custom-modal .modal-close-btn .close-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;font-weight:700;line-height:1;color:#fff;opacity:0;transition:opacity .3s ease}
+.custom-modal:hover .loader-ring-progress{opacity:.3}
+.custom-modal:hover .loader-ring{opacity:.3}
+.custom-modal:hover .close-icon{opacity:1}
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div id="left-pane">
+            <div class="header-container">
+                <h2><i class="fas fa-table"></i> Генератор графіків</h2>
+                <div class="controls">
+                    <!-- Tick Fields -->
+                    <div class="compare-control" id="rotate-toggle-container">
+                        <label for="rotate-toggle" title="Обертати"><i class="fas fa-sync-alt"></i></label>
+                        <input type="checkbox" id="rotate-toggle">
+                    </div>
+                    <div class="compare-control" id="bar-chart-toggle-container">
+                        <label for="bar-chart-toggle" title="Стовпці"><i class="fas fa-chart-bar"></i></label>
+                        <input type="checkbox" id="bar-chart-toggle">
+                    </div>
+                    <div class="compare-control" id="compare-toggle-container">
+                        <label for="compare-toggle" title="Порівняти"><i class="fas fa-balance-scale"></i></label>
+                        <input type="checkbox" id="compare-toggle">
+                    </div>
+                    
+                    <!-- Horizontal Scrollers -->
+                    <div class="control-wrapper" id="connect-toggle-container" title="Товщина ліній">
+                        <label for="connect-thickness-slider" title="Скинути товщину до мінімальної"><i class="fas fa-link"></i></label>
+                        <input type="range" id="connect-thickness-slider" min="0" max="100" value="0" step="1">
+                    </div>
+                    <div class="control-wrapper" id="thickness-slider-container" title="Товщина елементів">
+                        <label for="thickness-slider" title="Скинути товщину до стандартної"><i class="fas fa-arrows-alt-h"></i></label>
+                        <input type="range" id="thickness-slider" min="1" max="100" value="50" step="1">
+                    </div>
+                    <div class="control-wrapper" id="font-size-slider-container" title="Розмір шрифту">
+                        <label for="font-size-slider" title="Скинути розмір до стандартного"><i class="fas fa-font"></i></label>
+                        <input type="range" id="font-size-slider" min="8" max="24" value="12" step="1">
+                    </div>
+                    
+                    <!-- Buttons -->
+                    <div class="color-picker-container">
+                        <button id="color-picker-toggle-btn" class="btn" title="Обрати колір">
+                            <i class="fas fa-palette"></i>
+                        </button>
+                        <div id="color-picker-popup">
+                           <div id="single-color-wrapper">
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="color-picker" value="#b80000">
+                                    <input type="text" id="hex-input" maxlength="7">
+                                </div>
+                            </div>
+                            <div id="multi-color-list"></div>
+                        </div>
+                    </div>
+                    <button id="add-row-btn" class="btn" title="Додати рядок"><i class="fas fa-plus"></i><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm0 7h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/></svg></button>
+                    <button id="add-col-btn" class="btn" title="Додати колонку"><i class="fas fa-plus"></i><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm7 0h4a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/></svg></button>
+                    <input type="file" id="csv-upload-input" accept=".csv,text/csv" style="display:none;">
+                    <div class="download-container">
+                        <button id="download-toggle-btn" class="btn" title="Завантажити / Додати"><i class="fas fa-box-archive"></i></button>
+                        <div id="download-options">
+                            <button id="upload-csv-btn" class="download-option"><i class="fas fa-upload"></i> Заповнити автоматично (CSV)</button>
+                            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 5px 0;">
+                            <button id="download-png-btn" class="download-option"><i class="fas fa-image"></i> Зберегти зображення (PNG)</button>
+                            <button id="download-gif-btn" class="download-option"><i class="fas fa-film"></i> Зберегти анімацію (GIF)</button>
+                            <button id="download-png-montage-btn" class="download-option"><i class="fas fa-th"></i> Зберегти зображення (PNG)</button>
+                            <button id="download-csv-btn" class="download-option"><i class="fas fa-file-csv"></i> Зберегти введені дані (CSV)</button>
+                            <button id="download-html-btn" class="download-option"><i class="fas fa-code"></i> Зберегти генератор (HTML)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="data-table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr id="main-header-row">
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="right-pane">
+            <div id="plot-div">
+            </div>
+        </div>
+    </div>
+    <div id="capture-overlay" style="display: none;">
+        <button id="cancel-capture-btn" title="Скасувати">×</button>
+        <div id="capture-status">Підготовка до захоплення...</div>
+        <div id="capture-progress">
+            <div id="capture-progress-bar"></div>
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const table = document.getElementById('data-table');
+        const thead = table.querySelector('thead');
+        const mainHeaderRow = document.getElementById('main-header-row');
+        const tbody = table.querySelector('tbody');
+        const plotDiv = document.getElementById('plot-div');
+        const addRowBtn = document.getElementById('add-row-btn');
+        const addColBtn = document.getElementById('add-col-btn');
+        const csvUploadInput = document.getElementById('csv-upload-input');
+        const downloadToggleBtn = document.getElementById('download-toggle-btn');
+        const downloadOptions = document.getElementById('download-options');
+        const uploadCsvBtn = document.getElementById('upload-csv-btn');
+        const downloadPngBtn = document.getElementById('download-png-btn');
+        const downloadGifBtn = document.getElementById('download-gif-btn');
+        const downloadPngMontageBtn = document.getElementById('download-png-montage-btn');
+        const downloadCsvBtn = document.getElementById('download-csv-btn');
+        const downloadHtmlBtn = document.getElementById('download-html-btn');
+        const colorPickerToggleBtn = document.getElementById('color-picker-toggle-btn');
+        const colorPickerPopup = document.getElementById('color-picker-popup');
+        const singleColorWrapper = document.getElementById('single-color-wrapper');
+        const multiColorList = document.getElementById('multi-color-list');
+        const colorPicker = document.getElementById('color-picker');
+        const hexInput = document.getElementById('hex-input');
+        const compareToggle = document.getElementById('compare-toggle');
+        const connectThicknessSlider = document.getElementById('connect-thickness-slider');
+        const barChartToggle = document.getElementById('bar-chart-toggle');
+        const rotateToggle = document.getElementById('rotate-toggle');
+        const thicknessSlider = document.getElementById('thickness-slider');
+        const fontSizeSlider = document.getElementById('font-size-slider');
+        const connectToggleContainer = document.getElementById('connect-toggle-container');
+        const barChartToggleContainer = document.getElementById('bar-chart-toggle-container');
+        const rotateToggleContainer = document.getElementById('rotate-toggle-container');
+        const captureOverlay = document.getElementById('capture-overlay');
+        const captureStatus = document.getElementById('capture-status');
+        const progressBar = document.getElementById('capture-progress-bar');
+        const cancelCaptureBtn = document.getElementById('cancel-capture-btn');
+        
+        let isCompareMode = false;
+        let isBarChartMode = false;
+        let is3DPlot = false;
+        let rotationAnimationId = null;
+        let isCaptureCancelled = false;
+        let dragCounter = 0;
+        const defaultColors = ['#b80000', '#000000', '#50e3c2', '#f5a623', '#bd10e0', '#4a90e2', '#d0021b', '#7ed321', '#8b572a', '#9013fe'];
+        rotateToggleContainer.classList.add('hidden');
+        barChartToggleContainer.classList.add('hidden');
+        connectToggleContainer.classList.add('hidden');
+        
+        function generateSampleValue(isCompare, dimension = 2) {
+            const randomNum = () => (Math.random() * 10).toFixed(1);
+            if (isCompare) {
+                const coords = [];
+                for (let i = 0; i < dimension; i++) {
+                    coords.push(randomNum());
+                }
+                return coords.join(',');
+            } else {
+                return randomNum();
+            }
+        }
+
+        function initialize() {
+            const initialHeaders = ["Координата X"];
+            const initialData = [ [2], [4], [3], [5], [10.5] ];
+            initialHeaders.forEach(headerText => createColumn(headerText));
+            tbody.innerHTML = '';
+            initialData.forEach(rowData => createRow(rowData));
+            hexInput.value = colorPicker.value;
+            updatePalette();
+            updatePlot();
+            adjustTableLayout();
+            setupEventListeners();
+        }
+        
+        function setupEventListeners() {
+            addRowBtn.addEventListener('click', () => { createRow(); updatePlot(); adjustTableLayout(); });
+            addColBtn.addEventListener('click', () => {
+                const currentColCount = mainHeaderRow.cells.length;
+                if (isCompareMode) {
+                    if (currentColCount >= 10) {
+                        showModal('Максимальна кількість наборів даних – 10.');
+                        return;
+                    }
+                    createColumn();
+                } else {
+                    if (currentColCount >= 3) { 
+                        showModal('У режимі єдиного набору даних доступно лише 3 стовпці. Натисніть <i class="fas fa-balance-scale"></i> аби обрати режим порівняння даних.'); 
+                        return; 
+                    }
+                    const newHeaderText = ["Координата Y", "Координата Z"][currentColCount - 1];
+                    if (newHeaderText) { createColumn(newHeaderText); }
+                }
+                updatePalette(); updatePlot(); adjustTableLayout();
+            });
+            
+            // Global Drag & Drop Listeners
+            window.addEventListener('dragenter', (e) => {
+                if (e.dataTransfer.types.includes('Files')) {
+                    dragCounter++;
+                    document.body.classList.add('is-dragging-file');
+                    const downloadToggleBtnIcon = downloadToggleBtn.querySelector('i');
+                    if (downloadToggleBtnIcon) {
+                        downloadToggleBtnIcon.classList.remove('fa-box-archive');
+                        downloadToggleBtnIcon.classList.add('fa-upload');
+                    }
+                }
+            });
+            window.addEventListener('dragleave', () => {
+                dragCounter--;
+                if (dragCounter === 0) {
+                    document.body.classList.remove('is-dragging-file');
+                    const downloadToggleBtnIcon = downloadToggleBtn.querySelector('i');
+                    if (downloadToggleBtnIcon) {
+                        downloadToggleBtnIcon.classList.remove('fa-upload');
+                        downloadToggleBtnIcon.classList.add('fa-box-archive');
+                    }
+                }
+            });
+            window.addEventListener('dragover', (e) => e.preventDefault());
+            window.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                document.body.classList.remove('is-dragging-file');
+                const downloadToggleBtnIcon = downloadToggleBtn.querySelector('i');
+                if (downloadToggleBtnIcon) {
+                    downloadToggleBtnIcon.classList.remove('fa-upload');
+                    downloadToggleBtnIcon.classList.add('fa-box-archive');
+                }
+            });
+
+            // File input and combined button listeners
+            csvUploadInput.addEventListener('change', handleCsvUpload);
+            uploadCsvBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                csvUploadInput.click();
+            });
+            downloadToggleBtn.addEventListener('drop', (e) => {
+                e.preventDefault(); 
+                if (e.dataTransfer.files.length > 0) {
+                    processUploadedFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            table.addEventListener('input', (e) => {
+                if (e.target.matches('[contenteditable="true"]')) { setTimeout(()=>{updatePlot();}, 50); }
+            });
+            colorPickerToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                updatePalette();
+                colorPickerPopup.style.display = colorPickerPopup.style.display === 'block' ? 'none' : 'block';
+            });
+            document.addEventListener('click', (e) => {
+                if (!colorPickerPopup.contains(e.target) && !colorPickerToggleBtn.contains(e.target)) { colorPickerPopup.style.display = 'none'; }
+                if (!downloadOptions.contains(e.target) && !downloadToggleBtn.contains(e.target)) { downloadOptions.style.display = 'none'; }
+            });
+            colorPicker.addEventListener('input', () => { hexInput.value = colorPicker.value; updatePlot(); });
+            hexInput.addEventListener('change', () => {
+                if (/^#[0-9A-F]{6}$/i.test(hexInput.value)) { colorPicker.value = hexInput.value; updatePlot(); } 
+                else { hexInput.value = colorPicker.value; }
+            });
+            table.addEventListener('click', (e) => {
+                if (e.target.matches('.delete-row-btn, .delete-row-btn *')) { deleteRow(e.target.closest('tr')); }
+                if (e.target.matches('.delete-col-btn, .delete-col-btn *')) { deleteColumn(e.target.closest('th').cellIndex); }
+            });
+            window.addEventListener('resize', () => { requestAnimationFrame(() => { updatePlot(); adjustTableLayout(); }); });
+            compareToggle.addEventListener('change', handleModeSwitch);
+            
+            connectThicknessSlider.addEventListener('input', () => {
+                const connectValue = parseFloat(connectThicknessSlider.value);
+                const thicknessValue = parseFloat(thicknessSlider.value);
+                if (connectValue > thicknessValue) {
+                    thicknessSlider.value = connectValue;
+                }
+                updatePlot();
+            });
+            const connectThicknessLabel = document.querySelector('#connect-toggle-container label');
+            connectThicknessLabel.addEventListener('click', () => {
+                connectThicknessSlider.value = 0;
+                updatePlot();
+            });
+            
+            barChartToggle.addEventListener('change', () => {
+                isBarChartMode = barChartToggle.checked;
+                connectThicknessSlider.disabled = isBarChartMode;
+                if (isBarChartMode) { connectThicknessSlider.value = 0; }
+                updatePlot();
+            });
+            rotateToggle.addEventListener('change', () => {
+                if (rotateToggle.checked) { startRotation(); } else { stopRotation(); }
+            });
+
+            thicknessSlider.addEventListener('input', () => {
+                const connectValue = parseFloat(connectThicknessSlider.value);
+                const thicknessValue = parseFloat(thicknessSlider.value);
+                if (thicknessValue < connectValue) {
+                    connectThicknessSlider.value = thicknessValue;
+                }
+                updatePlot();
+            });
+            const thicknessLabel = document.querySelector('#thickness-slider-container label');
+            thicknessLabel.addEventListener('click', () => {
+                thicknessSlider.value = 50;
+                if (parseFloat(connectThicknessSlider.value) > 50) {
+                    connectThicknessSlider.value = 50;
+                }
+                updatePlot();
+            });
+            
+            fontSizeSlider.addEventListener('input', updatePlot);
+            const fontSizeLabel = document.querySelector('#font-size-slider-container label');
+            fontSizeLabel.addEventListener('click', () => {
+                fontSizeSlider.value = 12;
+                updatePlot();
+            });
+
+            multiColorList.addEventListener('input', (e) => {
+                if (e.target.matches('input[type="color"]')) {
+                    const colorInput = e.target;
+                    const newColor = colorInput.value;
+                    const colIndex = colorInput.dataset.colIndex;
+                    const hexInput = colorInput.nextElementSibling;
+                    if(hexInput) hexInput.value = newColor;
+                    const th = mainHeaderRow.cells[colIndex];
+                    if (th) {
+                        th.dataset.color = newColor;
+                        const indicator = th.querySelector('.column-color-indicator');
+                        if (indicator) indicator.style.backgroundColor = newColor;
+                    }
+                    updatePlot();
+                }
+            });
+
+            multiColorList.addEventListener('change', (e) => {
+                if (e.target.matches('input[type="text"]')) {
+                    const hexInput = e.target;
+                    const newColor = hexInput.value;
+                    const colIndex = hexInput.dataset.colIndex;
+                    const colorInput = hexInput.previousElementSibling;
+                    if (/^#[0-9A-F]{6}$/i.test(newColor)) {
+                        if(colorInput) colorInput.value = newColor;
+                        const th = mainHeaderRow.cells[colIndex];
+                        if (th) {
+                            th.dataset.color = newColor;
+                            const indicator = th.querySelector('.column-color-indicator');
+                            if (indicator) indicator.style.backgroundColor = newColor;
+                        }
+                        updatePlot();
+                    } else {
+                        if (colorInput) hexInput.value = colorInput.value;
+                    }
+                }
+            });
+
+            downloadToggleBtn.addEventListener('click', () => {
+                downloadPngBtn.style.display = is3DPlot ? 'none' : 'flex';
+                downloadGifBtn.style.display = is3DPlot ? 'flex' : 'none';
+                downloadPngMontageBtn.style.display = is3DPlot ? 'flex' : 'none';
+                downloadOptions.style.display = downloadOptions.style.display === 'block' ? 'none' : 'block';
+            });
+            
+            downloadPngBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                captureScreenshot();
+            });
+            downloadGifBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                if (rotateToggle.checked) stopRotation(false);
+                captureRotationGIF();
+            });
+            downloadPngMontageBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                if (rotateToggle.checked) stopRotation(false);
+                captureStaticViewsPNG();
+            });
+            downloadCsvBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                downloadCSV();
+            });
+            downloadHtmlBtn.addEventListener('click', () => {
+                downloadOptions.style.display = 'none';
+                downloadHTML();
+            });
+            cancelCaptureBtn.addEventListener('click', () => {
+                isCaptureCancelled = true;
+                captureOverlay.style.display = 'none';
+                stopRotation(true);
+                if (rotateToggle.checked) startRotation();
+                showModal('Створення файлу скасовано.');
+            });
+        }
+        
+        function showModal(message){const modal=document.createElement('div');modal.className='custom-modal';modal.innerHTML=`<span>${message}</span><div class="modal-close-btn" title="Закрити"><svg viewBox="0 0 36 36"><circle class="loader-ring" cx="18" cy="18" r="15.915" fill="transparent" stroke-width="3"></circle><circle class="loader-ring-progress" cx="18" cy="18" r="15.915" fill="transparent" stroke-width="3" stroke-linecap="round"></circle></svg><span class="close-icon">×</span></div>`;Object.assign(modal.style,{position:'fixed',top:'85px',left:'50%',transform:'translateX(-50%)',background:'var(--danger-color)',color:'white',padding:'10px 35px 10px 20px',borderRadius:'5px',zIndex:1000,boxShadow:'0 2px 10px rgba(0,0,0,0.2)',maxWidth:'90%',textAlign:'center',fontSize:'14px',display:'flex',alignItems:'center'});document.body.appendChild(modal);const timeoutId=setTimeout(()=>{modal.remove()},4e3);const closeBtn=modal.querySelector('.modal-close-btn');closeBtn.addEventListener('click',()=>{clearTimeout(timeoutId);modal.remove()})}
+        
+        function addOrUpdateCoordNameRow() {
+            if (!isCompareMode) return;
+            let coordRow = thead.querySelector('.coord-names-row');
+            if (!coordRow) {
+                coordRow = thead.insertRow(0);
+                coordRow.className = 'coord-names-row';
+                const cell = document.createElement('th');
+                coordRow.appendChild(cell);
+                const editorContainer = document.createElement('div');
+                editorContainer.className = 'coord-name-editor';
+                editorContainer.innerHTML = `<div class="x-coord-editor"><label>Назва осі X:</label><div contenteditable="true" data-axis="x">X</div></div><div class="y-coord-editor"><label>Назва осі Y:</label><div contenteditable="true" data-axis="y">Y</div></div><div class="z-coord-editor" style="display: none;"><label>Назва осі Z:</label><div contenteditable="true" data-axis="z">Z</div></div>`;
+                cell.appendChild(editorContainer);
+            }
+            const cell = coordRow.cells[0];
+            if (cell) {
+                cell.colSpan = mainHeaderRow.cells.length + 1;
+            }
+        }
+
+        function removeCoordNameRow() {
+            const coordRow = thead.querySelector('.coord-names-row');
+            if (coordRow) coordRow.remove();
+        }
+
+        function handleModeSwitch() {
+            isCompareMode = compareToggle.checked;
+            if (isCompareMode) {
+                addOrUpdateCoordNameRow();
+            } else {
+                removeCoordNameRow();
+                const currentColCount = mainHeaderRow.cells.length;
+                if (currentColCount > 3) {
+                    for (let i = currentColCount - 1; i >= 3; i--) {
+                        mainHeaderRow.deleteCell(i);
+                        for (const row of tbody.rows) { row.deleteCell(i); }
+                    }
+                }
+            }
+            updateTableView();
+            updatePalette();
+            updatePlot();
+            adjustTableLayout();
+        }
+        
+        function updateTableView() {
+            Array.from(mainHeaderRow.cells).forEach((th, colIndex) => {
+                const contentWrapper = th.querySelector('.th-content-wrapper') || createContentWrapper(th);
+                const existingIndicator = th.querySelector('.column-color-indicator');
+                if (isCompareMode) {
+                    if (!existingIndicator) {
+                        const color = th.dataset.color || defaultColors[colIndex % defaultColors.length];
+                        th.dataset.color = color;
+                        const indicator = document.createElement('span');
+                        indicator.className = 'column-color-indicator';
+                        indicator.style.backgroundColor = color;
+                        contentWrapper.appendChild(indicator);
+                    }
+                    contentWrapper.childNodes[0].nodeValue = `Набір даних ${colIndex + 1} `;
+                } else {
+                    if (existingIndicator) { existingIndicator.remove(); }
+                    delete th.dataset.color;
+                    const headers = ["Координата X", "Координата Y", "Координата Z"];
+                    contentWrapper.childNodes[0].nodeValue = headers[colIndex] || `Column ${colIndex + 1}`;
+                }
+            });
+        }
+        
+        function createContentWrapper(th){const wrapper=document.createElement('div');wrapper.className='th-content-wrapper';while(th.firstChild&&th.firstChild.nodeType===3){wrapper.appendChild(th.firstChild)}th.insertBefore(wrapper,th.firstChild);return wrapper}
+        
+        function createColumn(headerText){
+            const colIndex=mainHeaderRow.cells.length;
+            const th=document.createElement('th');
+            th.setAttribute('contenteditable','true');
+            const wrapper=document.createElement('div');
+            wrapper.className='th-content-wrapper';
+            if(isCompareMode){
+                headerText=headerText||`Набір даних ${colIndex+1}`;
+                wrapper.appendChild(document.createTextNode(headerText+' '));
+                const color = defaultColors[colIndex % defaultColors.length];
+                th.dataset.color = color;
+                const indicator = document.createElement('span');
+                indicator.className = 'column-color-indicator';
+                indicator.style.backgroundColor = color;
+                wrapper.appendChild(indicator);
+            }else{
+                headerText=headerText||"New Column";
+                wrapper.appendChild(document.createTextNode(headerText))
+            }
+            th.appendChild(wrapper);
+            const deleteBtn=document.createElement('button');
+            deleteBtn.className='delete-btn delete-col-btn';
+            deleteBtn.innerHTML='<i class="fas fa-times"></i>';
+            th.appendChild(deleteBtn);
+            mainHeaderRow.appendChild(th);
+            for(const row of tbody.rows){
+                const td=document.createElement('td');
+                td.setAttribute('contenteditable','true');
+                let sampleValue;
+                if (isCompareMode) {
+                    let compareDimension = 2;
+                    if (row.cells.length > 1 && row.cells[0].textContent.trim() !== '') {
+                        compareDimension = Math.max(2, row.cells[0].textContent.trim().split(',').length);
+                    }
+                    sampleValue = generateSampleValue(true, compareDimension);
+                } else {
+                    sampleValue = generateSampleValue(false);
+                }
+                td.textContent = sampleValue;
+                row.insertBefore(td,row.cells[row.cells.length-1])
+            }
+            addOrUpdateCoordNameRow();
+        }
+        
+        function deleteColumn(colIndex){
+            if(!isCompareMode&&mainHeaderRow.cells.length<=1){showModal('Необхідно мати в наявності бодай одну колонку.');return}
+            mainHeaderRow.deleteCell(colIndex);
+            for(const row of tbody.rows){row.deleteCell(colIndex)}
+            addOrUpdateCoordNameRow();
+            updatePalette();
+            updatePlot();
+            adjustTableLayout();
+        }
+        
+        function createRow(rowData=[]){
+            const tr=tbody.insertRow();
+            const colCount=mainHeaderRow.cells.length;
+            let compareDimension = 2;
+            if (isCompareMode) {
+                if (tbody.rows.length > 1) { 
+                    const firstDataCell = tbody.rows[0].cells[0];
+                    if (firstDataCell && firstDataCell.textContent.trim() !== '') {
+                        compareDimension = Math.max(2, firstDataCell.textContent.trim().split(',').length);
+                    }
+                }
+            }
+            for(let i=0;i<colCount;i++){
+                const td=tr.insertCell();
+                td.setAttribute('contenteditable','true');
+                if(rowData[i]!==undefined){ td.textContent=rowData[i] }
+                else{ td.textContent = generateSampleValue(isCompareMode, compareDimension); }
+            }
+            const deleteCell=tr.insertCell();
+            const deleteBtn=document.createElement('button');
+            deleteBtn.className='delete-btn delete-row-btn';
+            deleteBtn.innerHTML='<i class="fas fa-trash-alt"></i>';
+            deleteCell.appendChild(deleteBtn);
+            deleteCell.style.border='none';
+            deleteCell.style.background='none';
+        }
+        
+        function deleteRow(rowElement){rowElement.remove();updatePlot();adjustTableLayout()}
+        
+        function parseTable() {
+            if (isCompareMode) {
+                const datasets = Array.from(mainHeaderRow.cells).map((th, colIndex) => {
+                    const wrapper = th.querySelector('.th-content-wrapper');
+                    const name = wrapper ? wrapper.childNodes[0].nodeValue.trim() : `Dataset ${colIndex + 1}`;
+                    const color = th.dataset.color || defaultColors[colIndex % defaultColors.length];
+                    const coords = Array.from(tbody.rows).map(row => {
+                        const cell = row.cells[colIndex];
+                        if (!cell) return [];
+                        return cell.textContent.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                    }).filter(c => c.length > 0);
+                    return { name, color, coords };
+                });
+                return { datasets, isCompare: true };
+            } else {
+                const headers = Array.from(mainHeaderRow.cells).map(th => {
+                    const wrapper = th.querySelector('.th-content-wrapper');
+                    return wrapper ? wrapper.childNodes[0].nodeValue.trim() : th.textContent.trim();
+                });
+                const data = Array.from(tbody.rows).map(row => {
+                    const dataCells = Array.from(row.cells).slice(0, -1);
+                    return dataCells.map(cell => { const value = parseFloat(cell.textContent); return isNaN(value) ? 0 : value; });
+                });
+                return { headers, data, isCompare: false };
+            }
+        }
+
+        function updatePalette() {
+            if (isCompareMode) {
+                singleColorWrapper.style.display = 'none';
+                multiColorList.style.display = 'block';
+                multiColorList.innerHTML = '';
+                Array.from(mainHeaderRow.cells).forEach((th, index) => {
+                    const currentColor = th.dataset.color || defaultColors[index % defaultColors.length];
+                    const listItem = document.createElement('div');
+                    listItem.className = 'color-picker-list-item';
+                    const label = document.createElement('label');
+                    label.textContent = `Набір ${index + 1}`;
+                    const pickerWrapper = document.createElement('div');
+                    pickerWrapper.className = 'color-picker-wrapper';
+                    const colorInput = document.createElement('input');
+                    colorInput.type = 'color';
+                    colorInput.value = currentColor;
+                    colorInput.dataset.colIndex = index;
+                    const hexInput = document.createElement('input');
+                    hexInput.type = 'text';
+                    hexInput.maxLength = 7;
+                    hexInput.value = currentColor;
+                    hexInput.dataset.colIndex = index;
+                    pickerWrapper.appendChild(colorInput);
+                    pickerWrapper.appendChild(hexInput);
+                    listItem.appendChild(label);
+                    listItem.appendChild(pickerWrapper);
+                    multiColorList.appendChild(listItem);
+                });
+            } else {
+                singleColorWrapper.style.display = 'block';
+                multiColorList.style.display = 'none';
+            }
+        }
+        
+        function adjustTableLayout(){const tableContainer=document.getElementById('data-table-container');const table=document.getElementById('data-table');const BASE_FONT_SIZE=14;const MIN_FONT_SIZE=7;const containerHeight=tableContainer.clientHeight;const margin=window.innerHeight*0.02;const targetMaxHeight=containerHeight-margin;table.style.fontSize=BASE_FONT_SIZE+'px';const contentHeight=table.offsetHeight;if(contentHeight>targetMaxHeight){const scaleRatio=targetMaxHeight/contentHeight;let newFontSize=BASE_FONT_SIZE*scaleRatio;newFontSize=Math.max(newFontSize,MIN_FONT_SIZE);table.style.fontSize=newFontSize+'px'}else{table.style.fontSize=BASE_FONT_SIZE+'px'}}
+        function startRotation(){if(rotationAnimationId)return;const radius=2.5;const z=1.75;let angle=Math.atan2(plotDiv.layout.scene.camera.eye.y,plotDiv.layout.scene.camera.eye.x);function rotate(){angle+=0.01;const eye_x=radius*Math.cos(angle);const eye_y=radius*Math.sin(angle);Plotly.relayout(plotDiv,{'scene.camera.eye':{x:eye_x,y:eye_y,z:z}});rotationAnimationId=requestAnimationFrame(rotate)}rotate()}
+        function stopRotation(resetPosition=true){if(rotationAnimationId){cancelAnimationFrame(rotationAnimationId);rotationAnimationId=null}if(resetPosition){Plotly.relayout(plotDiv,{'scene.camera.eye':{x:1.75,y:1.75,z:1.75}})}}
+        function create3DBarTraces(points,color,name,barSize=.8){const allX=[],allY=[],allZ=[];const allI=[],allJ=[],allK=[];let vertexOffset=0;for(const point of points){const[px,py,pz]=point;if(pz===0)continue;const halfSize=barSize/2;const vertices=[[px-halfSize,py-halfSize,0],[px+halfSize,py-halfSize,0],[px+halfSize,py+halfSize,0],[px-halfSize,py+halfSize,0],[px-halfSize,py-halfSize,pz],[px+halfSize,py-halfSize,pz],[px+halfSize,py+halfSize,pz],[px-halfSize,py+halfSize,pz]];vertices.forEach(v=>{allX.push(v[0]);allY.push(v[1]);allZ.push(v[2])});const faces=[[0,1,2],[0,2,3],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[2,3,7],[2,7,6],[0,3,7],[0,7,4],[1,2,6],[1,6,5]];faces.forEach(face=>{allI.push(face[0]+vertexOffset);allJ.push(face[1]+vertexOffset);allK.push(face[2]+vertexOffset)});vertexOffset+=8}return{x:allX,y:allY,z:allZ,i:allI,j:allJ,k:allK,type:'mesh3d',name:name,color:color,flatshading:true,lighting:{ambient:.8,diffuse:1,specular:.1,roughness:.5,fresnel:.2}}}
+        
+        function validateTableData() {
+            const allDataCells = tbody.querySelectorAll('td[contenteditable="true"]');
+            allDataCells.forEach(cell => cell.classList.remove('invalid-cell'));
+            if (isCompareMode) {
+                const dimFrequencies = {}; let dataFound = false;
+                allDataCells.forEach(cell => {
+                    const content = cell.textContent.trim();
+                    if (content) { dataFound = true; const dim = content.split(',').length; dimFrequencies[dim] = (dimFrequencies[dim] || 0) + 1; }
+                });
+                if (!dataFound) return; let mostCommonDim = null; let maxFreq = 0;
+                for (const dim in dimFrequencies) { if (dimFrequencies[dim] > maxFreq) { maxFreq = dimFrequencies[dim]; mostCommonDim = parseInt(dim, 10); } }
+                if (mostCommonDim === null) return;
+                allDataCells.forEach(cell => { const content = cell.textContent.trim(); if (content) { const currentDim = content.split(',').length; if (currentDim !== mostCommonDim) { cell.classList.add('invalid-cell'); } } });
+            } else { allDataCells.forEach(cell => { if (cell.textContent.includes(',')) { cell.classList.add('invalid-cell'); } }); }
+        }
+
+        function updatePlot() {
+            validateTableData(); stopRotation(false);
+            const markerThicknessValue = parseFloat(thicknessSlider.value);
+            const connectThicknessValue = parseFloat(connectThicknessSlider.value);
+            const fontSizeValue = parseFloat(fontSizeSlider.value);
+            
+            const markerSize = markerThicknessValue / 8;
+            const lineWidth = connectThicknessValue / 8;
+            const barThickness = markerThicknessValue / 100;
+            const VIZ_CORRECTION_3D = 2.75;
+
+            const parsed = parseTable(); const plotContainerRect = plotDiv.getBoundingClientRect();
+            Plotly.purge(plotDiv); plotDiv.innerHTML = ''; is3DPlot = false;
+            rotateToggleContainer.classList.add('hidden'); barChartToggleContainer.classList.add('hidden'); connectToggleContainer.classList.add('hidden');
+            const coordRow = document.querySelector('.coord-names-row'); let axisTitles = {};
+            if (parsed.isCompare) {
+                const datasets = parsed.datasets.filter(d => d.coords.length > 0 && d.coords[0].length > 0);
+                if (datasets.length > 0 && datasets[0].coords[0].length === 3) is3DPlot = true;
+                barChartToggleContainer.classList.remove('hidden'); connectToggleContainer.classList.remove('hidden');
+                if (coordRow) {
+                    axisTitles.x = coordRow.querySelector('[data-axis="x"]').textContent.trim() || 'X';
+                    axisTitles.y = coordRow.querySelector('[data-axis="y"]').textContent.trim() || 'Y';
+                    axisTitles.z = coordRow.querySelector('[data-axis="z"]').textContent.trim() || 'Z';
+                    const zEditor = coordRow.querySelector('.z-coord-editor');
+                    if(zEditor) zEditor.style.display = is3DPlot ? 'inline-block' : 'none';
+                } else { axisTitles = { x: 'X', y: 'Y', z: 'Z' }; }
+            } else {
+                const numCols = parsed.headers ? parsed.headers.length : 0;
+                if (numCols > 1) { connectToggleContainer.classList.remove('hidden'); barChartToggleContainer.classList.remove('hidden'); if (numCols === 3) is3DPlot = true; }
+                axisTitles.x = parsed.headers[0]; axisTitles.y = parsed.headers[1]; axisTitles.z = parsed.headers[2];
+            }
+            if (is3DPlot) rotateToggleContainer.classList.remove('hidden');
+            
+            connectThicknessSlider.disabled = isBarChartMode;
+            
+            const plotMode = connectThicknessValue > 0 ? 'lines+markers' : 'markers';
+            const plotType = isBarChartMode ? 'bar' : 'scatter';
+            
+            let layout = {
+                title: { text: 'Графік', font: { size: Math.round(fontSizeValue * 1.2) } },
+                width: plotContainerRect.width, height: plotContainerRect.height, margin: { t: 40, l: 50, r: 20, b: 50 },
+                paper_bgcolor: 'var(--container-bg-color)', plot_bgcolor: 'var(--background-color)',
+                font: { family: 'Montserrat, sans-serif', color: 'var(--text-color)', size: fontSizeValue },
+                showlegend: isCompareMode
+            };
+
+            if (parsed.isCompare) {
+                const datasets = parsed.datasets.filter(d => d.coords.length > 0 && d.coords[0].length > 0);
+                if (datasets.length === 0) { plotDiv.textContent = 'Введіть дані у форматі x,y або x,y,z для порівняння.'; return; }
+                const dim = datasets[0].coords[0].length; let plotData = [];
+                switch (dim) {
+                    case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth }, width: isBarChartMode ? barThickness : undefined })); layout.xaxis = { title: { text: axisTitles.x } }; layout.yaxis = { title: { text: axisTitles.y } }; if (isBarChartMode) layout.barmode = 'group'; break;
+                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name, barThickness)); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth * VIZ_CORRECTION_3D } })); } layout.scene = { xaxis: { title: { text: axisTitles.x } }, yaxis: { title: { text: axisTitles.y } }, zaxis: { title: { text: axisTitles.z } }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    default: plotDiv.textContent = 'Порівняння підтримується для 2D та 3D.'; return;
+                }
+                Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
+            } else {
+                const { headers, data } = parsed; const numCols = headers.length; const selectedColor = colorPicker.value;
+                if (numCols === 0 || data.length === 0) { plotDiv.textContent = 'Додайте рядок-колонку аби згенерувати інформацію'; return; }
+                let plotData = [];
+                switch (numCols) {
+                    case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth }, width: isBarChartMode ? barThickness : undefined }]; layout.title.text = axisTitles.x; layout.xaxis = { title: { text: '' } }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
+                    case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth }, width: isBarChartMode ? barThickness : undefined }]; layout.xaxis = { title: { text: axisTitles.x } }; layout.yaxis = { title: { text: axisTitles.y } }; break;
+                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', '), barThickness); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth * VIZ_CORRECTION_3D } }]; } layout.scene = { xaxis: { title: { text: axisTitles.x } }, yaxis: { title: { text: axisTitles.y } }, zaxis: { title: { text: axisTitles.z } }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    default: plotDiv.textContent = 'Генератор підтримує роботу лише у 3-х вимірах'; return;
+                }
+                Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
+            }
+            if (is3DPlot && rotateToggle.checked) startRotation();
+        }
+        
+        function get3DDataBounds(plotDiv) {
+            let minX = Infinity, maxX = -Infinity,
+                minY = Infinity, maxY = -Infinity,
+                minZ = Infinity, maxZ = -Infinity;
+
+            if (!plotDiv.data) return { maxAbs: 1 };
+
+            plotDiv.data.forEach(trace => {
+                if (trace.type && trace.type.includes('3d')) {
+                    const coords = ['x', 'y', 'z'];
+                    coords.forEach(coord => {
+                        if (trace[coord]) {
+                            trace[coord].forEach(val => {
+                                if (coord === 'x') {
+                                    minX = Math.min(minX, val);
+                                    maxX = Math.max(maxX, val);
+                                } else if (coord === 'y') {
+                                    minY = Math.min(minY, val);
+                                    maxY = Math.max(maxY, val);
+                                } else {
+                                    minZ = Math.min(minZ, val);
+                                    maxZ = Math.max(maxZ, val);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            if (maxX === -Infinity) { // No 3D data found
+                return { maxAbs: 1 };
+            }
+            
+            const maxAbs = Math.max(
+                Math.abs(minX), Math.abs(maxX),
+                Math.abs(minY), Math.abs(maxY),
+                Math.abs(minZ), Math.abs(maxZ)
+            );
+
+            return { maxAbs: maxAbs || 1 };
+        }
+
+        async function captureScreenshot() {
+            const originalLayout = JSON.parse(JSON.stringify(plotDiv.layout));
+            isCaptureCancelled = false;
+            captureOverlay.style.display = 'flex';
+            captureStatus.textContent = "Автоматичне налаштування та підготовка...";
+            progressBar.style.width = '0%';
+            
+            try {
+                const captureLayout = JSON.parse(JSON.stringify(originalLayout));
+                
+                if (captureLayout.xaxis) {
+                    captureLayout.xaxis.automargin = true;
+                    captureLayout.xaxis.autorange = true;
+                }
+                if (captureLayout.yaxis) {
+                    captureLayout.yaxis.automargin = true;
+                    captureLayout.yaxis.autorange = true;
+                }
+
+                await Plotly.relayout(plotDiv, captureLayout);
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                if (isCaptureCancelled) throw new Error("Cancelled by user");
+
+                captureStatus.textContent = "Створення зображення...";
+                progressBar.style.width = '50%';
+                const url = await Plotly.toImage(plotDiv, { format: 'png', width: plotDiv.clientWidth, height: plotDiv.clientHeight });
+                
+                if (isCaptureCancelled) throw new Error("Cancelled by user");
+                
+                progressBar.style.width = '100%';
+                const a = document.createElement('a'); a.href = url; a.download = 'plot.png';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+            } catch (err) {
+                if (!isCaptureCancelled && err.message !== "Cancelled by user") {
+                    console.error('Error generating image:', err);
+                    showModal('Помилка при створенні зображення.');
+                }
+            } finally {
+                await Plotly.relayout(plotDiv, originalLayout);
+                captureOverlay.style.display = 'none';
+            }
+        }
+        
+        async function captureRotationGIF() {
+            const originalLayout = JSON.parse(JSON.stringify(plotDiv.layout));
+            isCaptureCancelled = false;
+            captureOverlay.style.display = 'flex';
+            captureStatus.textContent = "Завантаження компонентів...";
+            progressBar.style.width = '0%';
+            let workerUrl = null;
+
+            try {
+                const workerResponse = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+                if (!workerResponse.ok) throw new Error('Network response for worker was not ok');
+                const workerScript = await workerResponse.text();
+                const blob = new Blob([workerScript], { type: 'application/javascript' });
+                workerUrl = URL.createObjectURL(blob);
+                stopRotation(false);
+
+                const { maxAbs } = get3DDataBounds(plotDiv);
+                const zoomFactor = 1 + (maxAbs / 12); 
+                const radius = 2.5 * zoomFactor;
+                const z = 1.75 * zoomFactor;
+                const numFrames = 180;
+                const frameDelay = 40;
+                const angleStep = 2 * Math.PI / numFrames;
+
+                const gif = new GIF({ workers: 2, quality: 10, width: plotDiv.clientWidth, height: plotDiv.clientHeight, workerScript: workerUrl });
+
+                const gifRenderPromise = new Promise((resolve, reject) => {
+                    gif.on('finished', function (blob) {
+                        if (isCaptureCancelled) { reject(new Error("Cancelled")); return; }
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a'); a.href = url; a.download = 'rotating_plot.gif';
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    });
+                    gif.on('abort', () => reject(new Error("GIF render aborted")));
+                });
+
+                gif.on('progress', function (p) {
+                    if (isCaptureCancelled) { gif.abort(); return; }
+                    const totalProgress = 10 + (p * 90); progressBar.style.width = `${totalProgress}%`;
+                    captureStatus.textContent = `Кодування GIF: ${Math.round(p * 100)}%`;
+                });
+
+                for (let i = 0; i < numFrames; i++) {
+                    if (isCaptureCancelled) break;
+                    const angle = i * angleStep;
+                    const eye_x = radius * Math.cos(angle);
+                    const eye_y = radius * Math.sin(angle);
+
+                    await Plotly.relayout(plotDiv, { 'scene.camera.eye': { x: eye_x, y: eye_y, z: z } });
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
+                    if (isCaptureCancelled) break;
+                    const imgData = await Plotly.toImage(plotDiv, { format: 'png' });
+                    const img = await new Promise(resolve => { const image = new Image(); image.onload = () => resolve(image); image.src = imgData; });
+
+                    if (isCaptureCancelled) break;
+                    gif.addFrame(img, { delay: frameDelay });
+                    const captureProgress = ((i + 1) / numFrames) * 10; progressBar.style.width = `${captureProgress}%`;
+                    captureStatus.textContent = `Захоплення кадрів: ${Math.round(((i + 1) / numFrames) * 100)}%`;
+                }
+
+                if (!isCaptureCancelled) {
+                    captureStatus.textContent = 'Кодування GIF...';
+                    gif.render();
+                    await gifRenderPromise;
+                }
+
+            } catch (error) {
+                if (!isCaptureCancelled && error.message !== "Cancelled") {
+                    console.error("GIF creation error:", error);
+                    showModal('Помилка при створенні GIF. Перевірте з\'єднання з Інтернетом та спробуйте знову.');
+                }
+            } finally {
+                if (workerUrl) { URL.revokeObjectURL(workerUrl); }
+                await Plotly.relayout(plotDiv, originalLayout);
+                captureOverlay.style.display = 'none';
+                if (rotateToggle.checked && !isCaptureCancelled) {
+                    startRotation();
+                }
+            }
+        }
+
+        async function captureStaticViewsPNG() {
+            const originalLayout = JSON.parse(JSON.stringify(plotDiv.layout));
+            isCaptureCancelled = false;
+            captureOverlay.style.display = 'flex';
+            captureStatus.textContent = "Підготовка до захоплення видів...";
+            progressBar.style.width = '0%';
+            stopRotation(false);
+
+            try {
+                const { maxAbs } = get3DDataBounds(plotDiv);
+                const zoomFactor = 1 + (maxAbs / 12);
+                
+                const plotWidth = plotDiv.clientWidth; const plotHeight = plotDiv.clientHeight;
+                const views = [
+                    { name: 'Isometric 1', eye: { x: 1.5, y: 1.5, z: 1.5 } }, { name: 'Isometric 2', eye: { x: -1.5, y: 1.5, z: 1.5 } },
+                    { name: 'Isometric 3', eye: { x: 1.5, y: -1.5, z: 1.5 } }, { name: 'Isometric 4', eye: { x: -1.5, y: -1.5, z: 1.5 } },
+                    { name: 'Front View', eye: { x: 0, y: 2.5, z: 0 } }, { name: 'Right View', eye: { x: 2.5, y: 0, z: 0 } },
+                    { name: 'Top View', eye: { x: 0, y: 0, z: 2.5 } }, { name: 'Back View', eye: { x: 0, y: -2.5, z: 0 } },
+                ];
+            
+                const capturedImages = [];
+                for (let i = 0; i < views.length; i++) {
+                    if(isCaptureCancelled) break;
+                    const view = views[i];
+                    
+                    const zoomedEye = {
+                        x: view.eye.x * zoomFactor,
+                        y: view.eye.y * zoomFactor,
+                        z: view.eye.z * zoomFactor
+                    };
+                    const captureLayoutUpdate = { 'scene.camera.eye': zoomedEye };
+                    
+                    captureStatus.textContent = `Захоплення: ${view.name} (${i + 1}/${views.length})`;
+                    await Plotly.relayout(plotDiv, captureLayoutUpdate);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    if(isCaptureCancelled) break;
+                    const imgData = await Plotly.toImage(plotDiv, { format: 'png' });
+                    capturedImages.push(imgData);
+                    progressBar.style.width = `${((i + 1) / views.length) * 50}%`;
+                }
+
+                if(!isCaptureCancelled) {
+                    captureStatus.textContent = 'Об\'єднання зображень...';
+                    const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+                    canvas.width = plotWidth * 4; canvas.height = plotHeight * 2;
+                    const imagePromises = capturedImages.map(data => new Promise(resolve => { const img = new Image(); img.onload = () => resolve(img); img.src = data; }));
+                    const loadedImages = await Promise.all(imagePromises);
+                    loadedImages.forEach((img, i) => { const row = Math.floor(i / 4); const col = i % 4; ctx.drawImage(img, col * plotWidth, row * plotHeight, plotWidth, plotHeight); });
+                    progressBar.style.width = '100%';
+                    const finalImageURL = canvas.toDataURL('image/png');
+                    const a = document.createElement('a'); a.href = finalImageURL; a.download = 'plot_views.png';
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                }
+            } catch(error) {
+                if(!isCaptureCancelled && error.message !== 'Cancelled') {
+                    console.error("Static views creation error:", error);
+                    showModal('Помилка при створенні зображення з видами.');
+                }
+            } finally {
+                 await Plotly.relayout(plotDiv, originalLayout);
+                 captureOverlay.style.display = 'none';
+                 if (rotateToggle.checked && !isCaptureCancelled) startRotation();
+            }
+        }
+        
+        function downloadCSV() {
+            let csv = [];
+            
+            if (isCompareMode) {
+                const coordRow = table.querySelector('.coord-names-row');
+                if (coordRow) {
+                    const xName = coordRow.querySelector('[data-axis="x"]').textContent.trim();
+                    const yName = coordRow.querySelector('[data-axis="y"]').textContent.trim();
+                    let zName = '';
+                    const zEditor = coordRow.querySelector('.z-coord-editor');
+                    if (is3DPlot && zEditor && zEditor.style.display !== 'none') {
+                        zName = coordRow.querySelector('[data-axis="z"]').textContent.trim();
+                    }
+                    const axisHeaderParts = ['# Axis Names', `X: ${xName}`, `Y: ${yName}`];
+                    if (zName) {
+                        axisHeaderParts.push(`Z: ${zName}`);
+                    }
+                    csv.push(axisHeaderParts.join(','));
+                }
+            }
+        
+            const headers = Array.from(mainHeaderRow.cells).map(th => {
+                const wrapper = th.querySelector('.th-content-wrapper');
+                let text = (wrapper ? wrapper.childNodes[0].nodeValue : th.textContent).trim();
+                return `"${text.replace(/"/g, '""')}"`;
+            }).join(',');
+            csv.push(headers);
+            
+            const numCols = mainHeaderRow.cells.length;
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = Array.from(row.cells).slice(0, numCols);
+                const rowData = cells.map(cell => {
+                    const text = cell.textContent.trim();
+                    if (text.includes(',')) {
+                       return `"${text.replace(/"/g, '""')}"`;
+                    }
+                    return text;
+                }).join(',');
+                csv.push(rowData);
+            });
+        
+            const csvString = csv.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "plot_data.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function parseCsvLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            line = line.trim();
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result.map(s => s.replace(/^"|"$/g, '').trim());
+        }
+        
+        function handleCsvUpload(event) {
+            const file = event.target.files[0];
+            processUploadedFile(file);
+            event.target.value = null;
+        }
+
+        function processUploadedFile(file) {
+            if (!file) return;
+
+            if (!file.type.match('text/csv') && !file.name.endsWith('.csv')) {
+                 showModal('Будь ласка, завантажте файл у форматі CSV.');
+                 return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const text = e.target.result;
+                    let lines = text.split('\n').filter(line => line.trim() !== '');
+                    if (lines.length === 0) {
+                        showModal('Файл CSV порожній.');
+                        return;
+                    }
+
+                    let newIsCompareMode = false;
+                    let axisNames = null;
+
+                    if (lines[0].startsWith('# Axis Names')) {
+                        newIsCompareMode = true;
+                        axisNames = {};
+                        const parts = parseCsvLine(lines[0]);
+                        parts.forEach(part => {
+                            const [key, value] = part.split(':').map(s => s.trim());
+                            if (key && value) {
+                                if (key.toLowerCase().includes('x')) axisNames.x = value;
+                                else if (key.toLowerCase().includes('y')) axisNames.y = value;
+                                else if (key.toLowerCase().includes('z')) axisNames.z = value;
+                            }
+                        });
+                        lines.shift();
+                    } else if (lines.length > 1) {
+                        const dataSample = parseCsvLine(lines[1]);
+                        if (dataSample.some(cell => cell.includes(','))) {
+                            newIsCompareMode = true;
+                        }
+                    }
+
+                    mainHeaderRow.innerHTML = '';
+                    tbody.innerHTML = '';
+
+                    compareToggle.checked = newIsCompareMode;
+                    handleModeSwitch(); 
+
+                    const headers = parseCsvLine(lines[0]);
+                    headers.forEach(headerText => createColumn(headerText));
+                    
+                    tbody.innerHTML = '';
+
+                    const dataLines = lines.slice(1);
+                    dataLines.forEach(line => {
+                        const rowData = parseCsvLine(line);
+                        createRow(rowData);
+                    });
+                    
+                    if (isCompareMode && axisNames) {
+                        const coordRow = thead.querySelector('.coord-names-row');
+                        if (coordRow) {
+                             if(axisNames.x) coordRow.querySelector('[data-axis="x"]').textContent = axisNames.x;
+                             if(axisNames.y) coordRow.querySelector('[data-axis="y"]').textContent = axisNames.y;
+                             if(axisNames.z) coordRow.querySelector('[data-axis="z"]').textContent = axisNames.z;
+                        }
+                    }
+
+                    updatePalette();
+                    updatePlot();
+                    adjustTableLayout();
+                } catch (err) {
+                    console.error("Помилка завантаження CSV:", err);
+                    showModal("Помилка розбору файлу CSV.");
+                }
+            };
+            reader.onerror = () => { showModal("Не вдалося прочитати файл."); };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+
+        async function downloadHTML() {
+            try {
+                const pageUrl = window.location.href;
+
+                if (!pageUrl.startsWith('http')) {
+                     showModal('Завантаження оригінального файлу неможливе з поточного розташування. Збережено поточний стан.');
+                     const fallbackHtmlContent = document.documentElement.outerHTML;
+                     const blob = new Blob([fallbackHtmlContent], { type: 'text/html;charset=utf-8;' });
+                     const url = URL.createObjectURL(blob);
+                     const link = document.createElement("a");
+                     link.setAttribute("href", url);
+                     link.setAttribute("download", "index-snapshot.html");
+                     document.body.appendChild(link);
+                     link.click();
+                     document.body.removeChild(link);
+                     URL.revokeObjectURL(url);
+                     return;
+                }
+
+                isCaptureCancelled = false;
+                captureOverlay.style.display = 'flex';
+                captureStatus.textContent = "Завантаження оригінального файлу...";
+                progressBar.style.width = '0%';
+                
+                const response = await fetch(pageUrl);
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                
+                progressBar.style.width = '50%';
+                const htmlContent = await response.text();
+                progressBar.style.width = '100%';
+
+                const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                
+                const path = new URL(pageUrl).pathname;
+                const filename = path.substring(path.lastIndexOf('/') + 1) || 'index.html';
+
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                setTimeout(() => {
+                    if (!isCaptureCancelled) {
+                       captureOverlay.style.display = 'none';
+                    }
+                }, 500);
+
+            } catch (error) {
+                if (isCaptureCancelled) return;
+                console.error("Error downloading original HTML:", error);
+                captureOverlay.style.display = 'none';
+                showModal('Помилка завантаження. Збережено поточний стан сторінки.');
+                const fallbackHtmlContent = document.documentElement.outerHTML;
+                const blob = new Blob([fallbackHtmlContent], { type: 'text/html;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", "index-snapshot.html");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        initialize();
+    });
+    </script>
+</body>
+</html>
