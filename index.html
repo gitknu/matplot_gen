@@ -905,17 +905,48 @@ body.is-dragging-file #download-toggle-btn {
         function validateTableData() {
             const allDataCells = tbody.querySelectorAll('td[contenteditable="true"]');
             allDataCells.forEach(cell => cell.classList.remove('invalid-cell'));
+
             if (isCompareMode) {
-                const dimFrequencies = {}; let dataFound = false;
+                let maxDim = 0;
+                let dataFound = false;
+
+                // First pass: find the maximum dimension
                 allDataCells.forEach(cell => {
                     const content = cell.textContent.trim();
-                    if (content) { dataFound = true; const dim = content.split(',').length; dimFrequencies[dim] = (dimFrequencies[dim] || 0) + 1; }
+                    if (content) {
+                        dataFound = true;
+                        const currentDim = content.split(',').length;
+                        if (currentDim > maxDim) {
+                            maxDim = currentDim;
+                        }
+                    }
                 });
-                if (!dataFound) return; let mostCommonDim = null; let maxFreq = 0;
-                for (const dim in dimFrequencies) { if (dimFrequencies[dim] > maxFreq) { maxFreq = dimFrequencies[dim]; mostCommonDim = parseInt(dim, 10); } }
-                if (mostCommonDim === null) return;
-                allDataCells.forEach(cell => { const content = cell.textContent.trim(); if (content) { const currentDim = content.split(',').length; if (currentDim !== mostCommonDim) { cell.classList.add('invalid-cell'); } } });
-            } else { allDataCells.forEach(cell => { if (cell.textContent.includes(',')) { cell.classList.add('invalid-cell'); } }); }
+
+                // If no data is found, do nothing.
+                if (!dataFound) {
+                    return;
+                }
+
+                // Second pass: apply validation
+                allDataCells.forEach(cell => {
+                    const content = cell.textContent.trim();
+                    if (!content) { // Mark empty cells as invalid if there's data elsewhere
+                        cell.classList.add('invalid-cell');
+                    } else {
+                        const currentDim = content.split(',').length;
+                        if (currentDim < maxDim) {
+                            cell.classList.add('invalid-cell');
+                        }
+                    }
+                });
+
+            } else { // Not in compare mode
+                allDataCells.forEach(cell => {
+                    if (cell.textContent.includes(',')) {
+                        cell.classList.add('invalid-cell');
+                    }
+                });
+            }
         }
 
         function BBoxIntersect(box1, box2, margin = 1) {
@@ -1011,12 +1042,15 @@ body.is-dragging-file #download-toggle-btn {
             let axisTitles = {};
 
             // Determine if the plot will be rendered in 3D.
-            // This happens if the primary data format is 3D. The validator handles inconsistencies.
             if (parsed.isCompare) {
                 const datasets = parsed.datasets.filter(d => d.coords.length > 0 && d.coords.some(c => c.length > 0));
-                if (datasets.length > 0 && datasets[0].coords.some(c => c.length === 3)) {
-                    is3DPlot = true;
-                }
+                let maxDim = 0;
+                datasets.forEach(ds => {
+                    ds.coords.forEach(c => {
+                        if (c.length > maxDim) maxDim = c.length;
+                    });
+                });
+                if (maxDim === 3) is3DPlot = true;
             } else {
                 if (parsed.headers && parsed.headers.length === 3) {
                     is3DPlot = true;
@@ -1024,7 +1058,6 @@ body.is-dragging-file #download-toggle-btn {
             }
             
             // Determine if the Z-axis name editor should be visible.
-            // This is true if *any* data point suggests a 3D context.
             let shouldShowZAxisEditor = false;
             if (parsed.isCompare) {
                 shouldShowZAxisEditor = parsed.datasets.some(ds => ds.coords.some(c => c.length === 3));
@@ -1032,7 +1065,7 @@ body.is-dragging-file #download-toggle-btn {
                 shouldShowZAxisEditor = is3DPlot;
             }
 
-            // Configure UI controls and axis titles based on dimensionality
+            // Configure UI controls and axis titles
             if (parsed.isCompare) {
                 barChartToggleContainer.classList.remove('hidden'); 
                 connectToggleContainer.classList.remove('hidden');
