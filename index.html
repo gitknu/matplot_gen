@@ -685,9 +685,27 @@ body.is-dragging-file #download-toggle-btn {
         function handleModeSwitch() {
             isCompareMode = compareToggle.checked;
             if (isCompareMode) {
+                // If switching to compare mode, automatically update single-value cells to 2D sample data
+                Array.from(tbody.rows).forEach(row => {
+                    for (let i = 0; i < mainHeaderRow.cells.length; i++) {
+                        const cell = row.cells[i];
+                        if (cell) {
+                            const textContent = cell.textContent.trim();
+                            if (!textContent.includes(',')) {
+                                const existingValue = parseFloat(textContent);
+                                if (!isNaN(existingValue)) {
+                                    cell.textContent = `${existingValue},${(Math.random() * 10).toFixed(1)}`;
+                                } else {
+                                    cell.textContent = generateSampleValue(true, 2);
+                                }
+                            }
+                        }
+                    }
+                });
                 addOrUpdateCoordNameRow();
             } else {
                 removeCoordNameRow();
+                // When switching off compare mode, if there are more than 3 columns, trim them
                 const currentColCount = mainHeaderRow.cells.length;
                 if (currentColCount > 3) {
                     for (let i = currentColCount - 1; i >= 3; i--) {
@@ -910,7 +928,7 @@ body.is-dragging-file #download-toggle-btn {
                 let maxDim = 0;
                 let dataFound = false;
 
-                // First pass: find the maximum dimension
+                // First pass: find the maximum dimension across all non-empty cells.
                 allDataCells.forEach(cell => {
                     const content = cell.textContent.trim();
                     if (content) {
@@ -922,25 +940,23 @@ body.is-dragging-file #download-toggle-btn {
                     }
                 });
 
-                // If no data is found, do nothing.
-                if (!dataFound) {
-                    return;
-                }
+                if (!dataFound) return; // No data, nothing to validate.
 
-                // Second pass: apply validation
+                // Second pass: Mark any cell as invalid if its dimension is less than the max.
                 allDataCells.forEach(cell => {
                     const content = cell.textContent.trim();
-                    if (!content) { // Mark empty cells as invalid if there's data elsewhere
-                        cell.classList.add('invalid-cell');
-                    } else {
+                    if (content) {
                         const currentDim = content.split(',').length;
                         if (currentDim < maxDim) {
                             cell.classList.add('invalid-cell');
                         }
+                    } else {
+                        // Empty cells are also invalid if a max dimension has been established
+                        cell.classList.add('invalid-cell');
                     }
                 });
 
-            } else { // Not in compare mode
+            } else { // Not in compare mode, simple validation
                 allDataCells.forEach(cell => {
                     if (cell.textContent.includes(',')) {
                         cell.classList.add('invalid-cell');
