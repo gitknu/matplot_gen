@@ -1190,6 +1190,7 @@ body.is-dragging-file #download-toggle-btn {
             
             try {
                 const captureLayout = JSON.parse(JSON.stringify(originalLayout));
+                captureLayout.showlegend = isCompareMode;
                 
                 if (captureLayout.xaxis) {
                     captureLayout.xaxis.automargin = true;
@@ -1242,6 +1243,10 @@ body.is-dragging-file #download-toggle-btn {
                 const blob = new Blob([workerScript], { type: 'application/javascript' });
                 workerUrl = URL.createObjectURL(blob);
                 stopRotation(false);
+
+                if (isCompareMode) {
+                    await Plotly.relayout(plotDiv, { showlegend: true });
+                }
 
                 const { maxAbs } = get3DDataBounds(plotDiv);
                 const zoomFactor = 1 + (maxAbs / 12); 
@@ -1320,6 +1325,10 @@ body.is-dragging-file #download-toggle-btn {
             stopRotation(false);
 
             try {
+                if (isCompareMode) {
+                    await Plotly.relayout(plotDiv, { showlegend: true });
+                }
+                
                 const { maxAbs } = get3DDataBounds(plotDiv);
                 const zoomFactor = 1 + (maxAbs / 12);
                 
