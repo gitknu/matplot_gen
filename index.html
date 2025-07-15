@@ -148,6 +148,38 @@ body.is-dragging-file #download-toggle-btn {
 .custom-modal:hover .loader-ring-progress{opacity:.3}
 .custom-modal:hover .loader-ring{opacity:.3}
 .custom-modal:hover .close-icon{opacity:1}
+
+/* Custom Zoom Scroller Styles */
+#zoom-container {
+    position: absolute;
+    top: 50px;
+    right: 5px;
+    z-index: 1001;
+    display: none; /* Initially hidden, changed to flex in JS */
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 5px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 15px;
+    border: 1px solid var(--border-color);
+}
+
+#zoom-icon {
+    font-size: 16px;
+    color: var(--primary-color);
+    title: "Zoom In/Out";
+}
+
+#zoom-slider {
+    -webkit-appearance: slider-vertical;
+    writing-mode: bt-lr; /* IE */
+    width: 20px;
+    height: 150px;
+    padding: 0 5px;
+    cursor: ns-resize;
+    background: transparent; /* Cleaner look */
+}
     </style>
 </head>
 <body>
@@ -230,6 +262,10 @@ body.is-dragging-file #download-toggle-btn {
         <div id="right-pane">
             <div id="plot-div">
             </div>
+            <div id="zoom-container">
+                <i class="fas fa-search-plus" id="zoom-icon"></i>
+                <input type="range" id="zoom-slider" min="10" max="500" value="100" orient="vertical">
+            </div>
         </div>
     </div>
     <div id="capture-overlay" style="display: none;">
@@ -272,6 +308,8 @@ body.is-dragging-file #download-toggle-btn {
         const connectToggleContainer = document.getElementById('connect-toggle-container');
         const barChartToggleContainer = document.getElementById('bar-chart-toggle-container');
         const rotateToggleContainer = document.getElementById('rotate-toggle-container');
+        const zoomContainer = document.getElementById('zoom-container');
+        const zoomSlider = document.getElementById('zoom-slider');
         const captureOverlay = document.getElementById('capture-overlay');
         const captureStatus = document.getElementById('capture-status');
         const progressBar = document.getElementById('capture-progress-bar');
@@ -283,6 +321,7 @@ body.is-dragging-file #download-toggle-btn {
         let rotationAnimationId = null;
         let isCaptureCancelled = false;
         let dragCounter = 0;
+        let lastCameraEye = { x: 1.75, y: 1.75, z: 1.75 };
         const defaultColors = ['#b80000', '#000000', '#50e3c2', '#f5a623', '#bd10e0', '#4a90e2', '#d0021b', '#7ed321', '#8b572a', '#9013fe'];
         rotateToggleContainer.classList.add('hidden');
         barChartToggleContainer.classList.add('hidden');
@@ -466,6 +505,8 @@ body.is-dragging-file #download-toggle-btn {
                 fontSizeSlider.value = 10;
                 updatePlot();
             });
+            
+            zoomSlider.addEventListener('input', handleZoomChange);
 
             multiColorList.addEventListener('input', (e) => {
                 if (e.target.matches('input[type="color"]')) {
@@ -541,6 +582,49 @@ body.is-dragging-file #download-toggle-btn {
                 if (rotateToggle.checked) startRotation();
                 showModal('Створення файлу скасовано.');
             });
+        }
+        
+        function handleZoomChange() {
+            if (!is3DPlot || !plotDiv.layout.scene) return;
+
+            if (rotationAnimationId) {
+                cancelAnimationFrame(rotationAnimationId);
+                rotationAnimationId = null;
+            }
+            
+            const currentEye = plotDiv.layout.scene.camera.eye;
+            const eyeVector = { x: currentEye.x, y: currentEye.y, z: currentEye.z };
+
+            const magnitude = Math.sqrt(eyeVector.x ** 2 + eyeVector.y ** 2 + eyeVector.z ** 2);
+            if (magnitude === 0) return;
+            
+            const direction = {
+                x: eyeVector.x / magnitude,
+                y: eyeVector.y / magnitude,
+                z: eyeVector.z / magnitude
+            };
+
+            // Reverse the zoom scroller logic. Up = zoom more (smaller distance).
+            const sliderValue = parseFloat(zoomSlider.value);
+            const minSlider = 10;
+            const maxSlider = 500;
+            const minDistance = 0.2; // Zoomed IN
+            const maxDistance = 10;  // Zoomed OUT
+            
+            // Map slider value to distance inversely.
+            const newDistance = maxDistance - ((sliderValue - minSlider) / (maxSlider - minSlider)) * (maxDistance - minDistance);
+
+            const newEye = {
+                x: direction.x * newDistance,
+                y: direction.y * newDistance,
+                z: direction.z * newDistance
+            };
+            
+            Plotly.relayout(plotDiv, { 'scene.camera.eye': newEye });
+
+             if (rotateToggle.checked) {
+                startRotation();
+            }
         }
         
         function showModal(message){const modal=document.createElement('div');modal.className='custom-modal';modal.innerHTML=`<span>${message}</span><div class="modal-close-btn" title="Закрити"><svg viewBox="0 0 36 36"><circle class="loader-ring" cx="18" cy="18" r="15.915" fill="transparent" stroke-width="3"></circle><circle class="loader-ring-progress" cx="18" cy="18" r="15.915" fill="transparent" stroke-width="3" stroke-linecap="round"></circle></svg><span class="close-icon">×</span></div>`;Object.assign(modal.style,{position:'fixed',top:'85px',left:'50%',transform:'translateX(-50%)',background:'var(--danger-color)',color:'white',padding:'10px 35px 10px 20px',borderRadius:'5px',zIndex:1000,boxShadow:'0 2px 10px rgba(0,0,0,0.2)',maxWidth:'90%',textAlign:'center',fontSize:'14px',display:'flex',alignItems:'center'});document.body.appendChild(modal);const timeoutId=setTimeout(()=>{modal.remove()},4e3);const closeBtn=modal.querySelector('.modal-close-btn');closeBtn.addEventListener('click',()=>{clearTimeout(timeoutId);modal.remove()})}
@@ -759,8 +843,34 @@ body.is-dragging-file #download-toggle-btn {
         }
         
         function adjustTableLayout(){const tableContainer=document.getElementById('data-table-container');const table=document.getElementById('data-table');const BASE_FONT_SIZE=12;const MIN_FONT_SIZE=6;const containerHeight=tableContainer.clientHeight;const margin=window.innerHeight*0.02;const targetMaxHeight=containerHeight-margin;table.style.fontSize=BASE_FONT_SIZE+'px';const contentHeight=table.offsetHeight;if(contentHeight>targetMaxHeight){const scaleRatio=targetMaxHeight/contentHeight;let newFontSize=BASE_FONT_SIZE*scaleRatio;newFontSize=Math.max(newFontSize,MIN_FONT_SIZE);table.style.fontSize=newFontSize+'px'}else{table.style.fontSize=BASE_FONT_SIZE+'px'}}
-        function startRotation(){if(rotationAnimationId)return;const radius=2.5;const z=1.75;let angle=Math.atan2(plotDiv.layout.scene.camera.eye.y,plotDiv.layout.scene.camera.eye.x);function rotate(){angle+=0.01;const eye_x=radius*Math.cos(angle);const eye_y=radius*Math.sin(angle);Plotly.relayout(plotDiv,{'scene.camera.eye':{x:eye_x,y:eye_y,z:z}});rotationAnimationId=requestAnimationFrame(rotate)}rotate()}
-        function stopRotation(resetPosition=true){if(rotationAnimationId){cancelAnimationFrame(rotationAnimationId);rotationAnimationId=null}if(resetPosition){Plotly.relayout(plotDiv,{'scene.camera.eye':{x:1.75,y:1.75,z:1.75}})}}
+        
+        function startRotation() {
+            if (rotationAnimationId) return;
+            const currentEye = plotDiv.layout.scene.camera.eye;
+            const radius = Math.sqrt(currentEye.x ** 2 + currentEye.y ** 2);
+            const z = currentEye.z;
+            let angle = Math.atan2(currentEye.y, currentEye.x);
+
+            function rotate() {
+                angle += 0.01;
+                const eye_x = radius * Math.cos(angle);
+                const eye_y = radius * Math.sin(angle);
+                Plotly.relayout(plotDiv, { 'scene.camera.eye': { x: eye_x, y: eye_y, z: z } });
+                rotationAnimationId = requestAnimationFrame(rotate);
+            }
+            rotate();
+        }
+
+        function stopRotation(resetPosition=true){
+            if(rotationAnimationId){
+                cancelAnimationFrame(rotationAnimationId);
+                rotationAnimationId = null;
+            }
+            if(resetPosition){
+                Plotly.relayout(plotDiv,{'scene.camera.eye': lastCameraEye });
+            }
+        }
+        
         function create3DBarTraces(points,color,name,barSize=.8){const allX=[],allY=[],allZ=[];const allI=[],allJ=[],allK=[];let vertexOffset=0;for(const point of points){const[px,py,pz]=point;if(pz===0)continue;const halfSize=barSize/2;const vertices=[[px-halfSize,py-halfSize,0],[px+halfSize,py-halfSize,0],[px+halfSize,py+halfSize,0],[px-halfSize,py+halfSize,0],[px-halfSize,py-halfSize,pz],[px+halfSize,py-halfSize,pz],[px+halfSize,py+halfSize,pz],[px-halfSize,py+halfSize,pz]];vertices.forEach(v=>{allX.push(v[0]);allY.push(v[1]);allZ.push(v[2])});const faces=[[0,1,2],[0,2,3],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[2,3,7],[2,7,6],[0,3,7],[0,7,4],[1,2,6],[1,6,5]];faces.forEach(face=>{allI.push(face[0]+vertexOffset);allJ.push(face[1]+vertexOffset);allK.push(face[2]+vertexOffset)});vertexOffset+=8}return{x:allX,y:allY,z:allZ,i:allI,j:allJ,k:allK,type:'mesh3d',name:name,color:color,flatshading:true,lighting:{ambient:.8,diffuse:1,specular:.1,roughness:.5,fresnel:.2}}}
         
         function validateTableData() {
@@ -821,6 +931,8 @@ body.is-dragging-file #download-toggle-btn {
             const parsed = parseTable(); const plotContainerRect = plotDiv.getBoundingClientRect();
             Plotly.purge(plotDiv); plotDiv.innerHTML = ''; is3DPlot = false;
             rotateToggleContainer.classList.add('hidden'); barChartToggleContainer.classList.add('hidden'); connectToggleContainer.classList.add('hidden');
+            zoomContainer.style.display = 'none'; // Hide zoomer by default
+            
             const coordRow = document.querySelector('.coord-names-row'); let axisTitles = {};
             if (parsed.isCompare) {
                 const datasets = parsed.datasets.filter(d => d.coords.length > 0 && d.coords[0].length > 0);
@@ -838,7 +950,10 @@ body.is-dragging-file #download-toggle-btn {
                 if (numCols > 1) { connectToggleContainer.classList.remove('hidden'); barChartToggleContainer.classList.remove('hidden'); if (numCols === 3) is3DPlot = true; }
                 axisTitles.x = parsed.headers[0]; axisTitles.y = parsed.headers[1]; axisTitles.z = parsed.headers[2];
             }
-            if (is3DPlot) rotateToggleContainer.classList.remove('hidden');
+            if (is3DPlot) {
+                rotateToggleContainer.classList.remove('hidden');
+                zoomContainer.style.display = 'flex'; // Show zoomer for 3D plots
+            }
             
             connectThicknessSlider.disabled = isBarChartMode;
             
@@ -847,7 +962,7 @@ body.is-dragging-file #download-toggle-btn {
             
             let layout = {
                 title: { text: 'Графік', font: { size: Math.round(fontSizeValue * 1.2) } },
-                width: plotContainerRect.width, height: plotContainerRect.height, margin: { t: 40, l: 50, r: 20, b: 50 },
+                width: plotContainerRect.width, height: plotContainerRect.height, margin: { t: 40, l: 50, r: 40, b: 50 },
                 paper_bgcolor: 'var(--container-bg-color)', plot_bgcolor: 'var(--background-color)',
                 font: { family: 'Montserrat, sans-serif', color: 'var(--text-color)', size: fontSizeValue },
                 showlegend: isCompareMode
@@ -861,7 +976,7 @@ body.is-dragging-file #download-toggle-btn {
                 plotData = [];
                 switch (dim) {
                     case 2: plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth }, width: isBarChartMode ? barThickness : undefined })); layout.xaxis = { title: { text: axisTitles.x } }; layout.yaxis = { title: { text: axisTitles.y } }; if (isBarChartMode) layout.barmode = 'group'; break;
-                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name, barThickness)); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth * VIZ_CORRECTION_3D } })); } layout.scene = { xaxis: { title: { text: axisTitles.x } }, yaxis: { title: { text: axisTitles.y } }, zaxis: { title: { text: axisTitles.z } }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 3: if (isBarChartMode) { plotData = datasets.map(ds => create3DBarTraces(ds.coords, ds.color, ds.name, barThickness)); } else { plotData = datasets.map(ds => ({ x: ds.coords.map(c => c[0]), y: ds.coords.map(c => c[1]), z: ds.coords.map(c => c[2]), mode: plotMode, type: 'scatter3d', name: ds.name, marker: { color: ds.color, size: markerSize }, line: { color: ds.color, width: lineWidth * VIZ_CORRECTION_3D } })); } layout.scene = { xaxis: { title: { text: axisTitles.x } }, yaxis: { title: { text: axisTitles.y } }, zaxis: { title: { text: axisTitles.z } }, camera: { eye: lastCameraEye } }; break;
                     default: plotDiv.textContent = 'Порівняння підтримується для 2D та 3D.'; return;
                 }
             } else {
@@ -871,12 +986,16 @@ body.is-dragging-file #download-toggle-btn {
                 switch (numCols) {
                     case 1: plotData = [{ x: data.map(row => row[0]), y: data.map(() => 0), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth }, width: isBarChartMode ? barThickness : undefined }]; layout.title.text = axisTitles.x; layout.xaxis = { title: { text: '' } }; layout.yaxis = { title: '', showticklabels: false, showgrid: false, zeroline: true, range: isBarChartMode ? null : [-1, 1], fixedrange: !isBarChartMode }; break;
                     case 2: plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), mode: isBarChartMode ? undefined : plotMode, type: plotType, marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth }, width: isBarChartMode ? barThickness : undefined }]; layout.xaxis = { title: { text: axisTitles.x } }; layout.yaxis = { title: { text: axisTitles.y } }; break;
-                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', '), barThickness); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth * VIZ_CORRECTION_3D } }]; } layout.scene = { xaxis: { title: { text: axisTitles.x } }, yaxis: { title: { text: axisTitles.y } }, zaxis: { title: { text: axisTitles.z } }, camera: { eye: { x: 1.75, y: 1.75, z: 1.75 } } }; break;
+                    case 3: if (isBarChartMode) { const trace = create3DBarTraces(data, selectedColor, headers.join(', '), barThickness); plotData = trace.x.length > 0 ? [trace] : []; } else { plotData = [{ x: data.map(row => row[0]), y: data.map(row => row[1]), z: data.map(row => row[2]), mode: plotMode, type: 'scatter3d', marker: { color: selectedColor, size: markerSize }, line: { color: selectedColor, width: lineWidth * VIZ_CORRECTION_3D } }]; } layout.scene = { xaxis: { title: { text: axisTitles.x } }, yaxis: { title: { text: axisTitles.y } }, zaxis: { title: { text: axisTitles.z } }, camera: { eye: lastCameraEye } }; break;
                     default: plotDiv.textContent = 'Генератор підтримує роботу лише у 3-х вимірах'; return;
                 }
             }
 
-            await Plotly.newPlot(plotDiv, plotData, layout, {responsive: true});
+            await Plotly.newPlot(plotDiv, plotData, layout, {responsive: true, displayModeBar: false});
+
+            if (plotDiv.layout.scene && plotDiv.layout.scene.camera && plotDiv.layout.scene.camera.eye) {
+                lastCameraEye = plotDiv.layout.scene.camera.eye;
+            }
 
             if (!is3DPlot) {
                 const minFontSize = 7;
