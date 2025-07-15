@@ -484,7 +484,28 @@ body.is-dragging-file #download-toggle-btn {
             });
 
             table.addEventListener('input', (e) => {
-                if (e.target.matches('[contenteditable="true"]')) { setTimeout(()=>{updatePlot();}, 50); }
+                if (e.target.matches('[contenteditable="true"]')) {
+                    if (isCompareMode && e.target.tagName === 'TD') {
+                        const cell = e.target;
+                        const textContent = cell.textContent;
+                        const parts = textContent.split(',');
+
+                        if (parts.length > 3) {
+                            const newContent = parts.slice(0, 3).join(',');
+                            cell.textContent = newContent;
+                            
+                            const range = document.createRange();
+                            const sel = window.getSelection();
+                            range.selectNodeContents(cell);
+                            range.collapse(false);
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+
+                            showModal('Дозволено вводити лише 2 або 3 координати (наприклад, X,Y або X,Y,Z).');
+                        }
+                    }
+                    setTimeout(() => { updatePlot(); }, 50);
+                }
             });
             colorPickerToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -710,7 +731,7 @@ body.is-dragging-file #download-toggle-btn {
                 coordRow.appendChild(cell);
                 const editorContainer = document.createElement('div');
                 editorContainer.className = 'coord-name-editor';
-                editorContainer.innerHTML = `<div class="x-coord-editor"><label>Назва осі X:</label><div contenteditable="true" data-axis="x">X</div></div><div class="y-coord-editor"><label>Назва осі Y:</label><div contenteditable="true" data-axis="y">Y</div></div><div class="z-coord-editor" style="display: none;"><label>Назва осі Z:</label><div contenteditable="true" data-axis="z">Z</div></div>`;
+                editorContainer.innerHTML = `<div class="x-coord-editor"><label>Вісь X:</label><div contenteditable="true" data-axis="x">X</div></div><div class="y-coord-editor"><label>Вісь Y:</label><div contenteditable="true" data-axis="y">Y</div></div><div class="z-coord-editor" style="display: none;"><label>Вісь Z:</label><div contenteditable="true" data-axis="z">Z</div></div>`;
                 cell.appendChild(editorContainer);
             }
             const cell = coordRow.cells[0];
@@ -970,26 +991,28 @@ body.is-dragging-file #download-toggle-btn {
                 let maxDim = 0;
                 let dataFound = false;
 
-                // First pass: find the maximum dimension across all non-empty cells.
+                // First pass: find max dimension (up to 3), marking any > 3 as invalid.
                 allDataCells.forEach(cell => {
                     const content = cell.textContent.trim();
                     if (content) {
                         dataFound = true;
                         const currentDim = content.split(',').length;
-                        if (currentDim > maxDim) {
+                        if (currentDim > 3) {
+                            cell.classList.add('invalid-cell');
+                        } else if (currentDim > maxDim) {
                             maxDim = currentDim;
                         }
                     }
                 });
 
-                if (!dataFound) return; // No data, nothing to validate.
+                if (!dataFound) return;
 
-                // Second pass: Mark any cell as invalid if its dimension is less than the max.
+                // Second pass: Mark cells with dimensions less than the max as invalid.
                 allDataCells.forEach(cell => {
                     const content = cell.textContent.trim();
                     if (content) {
                         const currentDim = content.split(',').length;
-                        if (currentDim < maxDim) {
+                        if (currentDim < maxDim && !cell.classList.contains('invalid-cell')) {
                             cell.classList.add('invalid-cell');
                         }
                     } else {
