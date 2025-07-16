@@ -31,9 +31,9 @@ h2{margin:0;color:#333;flex-shrink:0;display:flex;align-items:center;gap:12px}
 
 #data-table-container{margin-top:20px;overflow:hidden;flex-grow:1}
 
-#data-table{width:100%;border-collapse:collapse}
+#data-table{width:100%;border-collapse:collapse;font-size:14px}
 
-#data-table th,#data-table td{border:1px solid var(--border-color);padding:8px 4px;text-align:center;position:relative;transition:font-size .2s ease-in-out, background-color .2s ease-in-out}
+#data-table th,#data-table td{border:1px solid var(--border-color);padding:8px 4px;text-align:center;position:relative;transition:background-color .2s ease-in-out}
 
 #data-table thead tr th{background-color:var(--header-bg-color);font-weight:500}
 #counter-header-cell, .row-number-cell {
@@ -1015,27 +1015,16 @@ body.is-dragging-file #download-toggle-btn {
         function adjustTableLayout() {
             const tableContainer = document.getElementById('data-table-container');
             const table = document.getElementById('data-table');
-            const BASE_FONT_SIZE = 14;
-            const MIN_FONT_SIZE = 14; 
-
+            
+            // Temporarily hide the scrollbar to get the true content height.
             tableContainer.style.overflowY = 'hidden';
-            table.style.fontSize = BASE_FONT_SIZE + 'px';
 
             const containerHeight = tableContainer.clientHeight;
-            let tableHeight = table.offsetHeight;
-
+            const tableHeight = table.offsetHeight;
+            
+            // If the table content is taller than its container, show the scrollbar.
             if (tableHeight > containerHeight) {
-                const scaleRatio = containerHeight / tableHeight;
-                let newFontSize = BASE_FONT_SIZE * scaleRatio;
-                
-                newFontSize = Math.max(newFontSize, MIN_FONT_SIZE);
-                table.style.fontSize = newFontSize + 'px';
-
-                tableHeight = table.offsetHeight;
-
-                if (tableHeight > containerHeight) {
-                    tableContainer.style.overflowY = 'auto';
-                }
+                tableContainer.style.overflowY = 'auto';
             }
         }
         
