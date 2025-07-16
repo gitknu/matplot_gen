@@ -34,6 +34,11 @@ h2{margin:0;color:#333;flex-shrink:0;display:flex;align-items:center;gap:12px}
 #data-table{width:100%;border-collapse:collapse;font-size:14px}
 
 #data-table th,#data-table td{border:1px solid var(--border-color);padding:8px 4px;text-align:center;position:relative;transition:background-color .2s ease-in-out}
+/* Add rule to allow text wrapping in cells */
+#data-table td {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
 
 #data-table thead tr th{background-color:var(--header-bg-color);font-weight:500}
 #counter-header-cell, .row-number-cell {
@@ -476,6 +481,64 @@ body.is-dragging-file #download-toggle-btn {
                 }
             });
         }
+
+        function formatCellOnInput(cell) {
+            if (cell.isFormatting) return;
+            cell.isFormatting = true;
+
+            try {
+                const selection = window.getSelection();
+                if (selection.rangeCount === 0) return;
+                const range = selection.getRangeAt(0);
+                const container = range.startContainer;
+                if (!cell.contains(container) || container.nodeType !== Node.TEXT_NODE) return;
+
+                const originalText = cell.textContent;
+                const originalCursorPos = range.startOffset;
+
+                const parts = originalText.split(',');
+                const needsFormatting = parts.some(p => p.trim().length > 2) || parts.length > 3;
+
+                let newText = originalText;
+
+                if (needsFormatting) {
+                    if (!originalText.includes('\n')) {
+                        newText = parts.join(',\n');
+                    }
+                } else {
+                    if (originalText.includes('\n')) {
+                        newText = parts.map(p => p.trim()).join(',');
+                    }
+                }
+
+                if (newText !== originalText) {
+                    let cursorChange = 0;
+                    const textBeforeCursor = originalText.substring(0, originalCursorPos);
+
+                    if (needsFormatting) { // adding newlines
+                        const commasBefore = (textBeforeCursor.match(/,/g) || []).length;
+                        const newlinesAlreadyPresent = (textBeforeCursor.match(/\n/g) || []).length;
+                        cursorChange = commasBefore - newlinesAlreadyPresent;
+                    } else { // removing newlines
+                        const newlinesToRemove = (textBeforeCursor.match(/\n/g) || []).length;
+                        cursorChange = -newlinesToRemove;
+                    }
+                    
+                    const newCursorPos = originalCursorPos + cursorChange;
+                    cell.textContent = newText;
+                    
+                    const newRange = document.createRange();
+                    if (cell.firstChild) {
+                        newRange.setStart(cell.firstChild, Math.min(newCursorPos, newText.length));
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }
+                }
+            } finally {
+                cell.isFormatting = false;
+            }
+        }
         
         function setupEventListeners() {
             const stopAddingRows = () => {
@@ -583,14 +646,18 @@ body.is-dragging-file #download-toggle-btn {
             });
 
             table.addEventListener('input', (e) => {
-                if (e.target.matches('[contenteditable="true"]')) {
-                    if (isCompareMode && e.target.tagName === 'TD') {
-                        const cell = e.target;
+                const cell = e.target;
+                if (cell.matches('td[contenteditable="true"]')) {
+                    if (isCompareMode) {
+                        formatCellOnInput(cell);
+                    
                         const textContent = cell.textContent;
-                        const parts = textContent.split(',');
+                        const parts = textContent.split(/,|\n/).filter(p => p.trim() !== '');
 
                         if (parts.length > 3) {
-                            const newContent = parts.slice(0, 3).join(',');
+                            const hadNewlines = textContent.includes('\n');
+                            const separator = hadNewlines ? ',\n' : ',';
+                            const newContent = parts.slice(0, 3).join(separator);
                             cell.textContent = newContent;
                             
                             const range = document.createRange();
@@ -604,6 +671,8 @@ body.is-dragging-file #download-toggle-btn {
                         }
                     }
                     setTimeout(() => { updatePlot(); }, 50);
+                } else if (cell.matches('th[contenteditable="true"]')) {
+                     setTimeout(() => { updatePlot(); }, 50);
                 }
             });
             colorPickerToggleBtn.addEventListener('click', (e) => {
@@ -867,6 +936,13 @@ body.is-dragging-file #download-toggle-btn {
                 });
                 addOrUpdateCoordNameRow();
             } else {
+                // When exiting compare mode, remove newlines from all cells
+                Array.from(tbody.querySelectorAll('td[contenteditable="true"]')).forEach(cell => {
+                    if (cell.textContent.includes('\n')) {
+                        cell.textContent = cell.textContent.replace(/\n/g, '');
+                    }
+                });
+
                 removeCoordNameRow();
                 const dataColCount = mainHeaderRow.cells.length - 1;
                 if (dataColCount > 3) {
@@ -1008,7 +1084,8 @@ body.is-dragging-file #download-toggle-btn {
                     const coords = Array.from(tbody.rows).map(row => {
                         const cell = row.cells[colIndex + 1];
                         if (!cell) return [];
-                        return cell.textContent.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+                        const cleanText = cell.textContent.replace(/\n/g, '');
+                        return cleanText.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
                     }).filter(c => c.length > 0);
                     return { name, color, coords };
                 });
@@ -1118,7 +1195,7 @@ body.is-dragging-file #download-toggle-btn {
                     const content = cell.textContent.trim();
                     if (content) {
                         dataFound = true;
-                        const currentDim = content.split(',').length;
+                        const currentDim = content.split(/,|\n/).filter(p => p.trim() !== '').length;
                         if (currentDim > 3) {
                             cell.classList.add('invalid-cell');
                         } else if (currentDim > maxDim) {
@@ -1133,7 +1210,7 @@ body.is-dragging-file #download-toggle-btn {
                 allDataCells.forEach(cell => {
                     const content = cell.textContent.trim();
                     if (content) {
-                        const currentDim = content.split(',').length;
+                        const currentDim = content.split(/,|\n/).filter(p => p.trim() !== '').length;
                         if (currentDim < maxDim && !cell.classList.contains('invalid-cell')) {
                             cell.classList.add('invalid-cell');
                         }
@@ -1606,7 +1683,10 @@ body.is-dragging-file #download-toggle-btn {
             rows.forEach(row => {
                 const cells = Array.from(row.cells).slice(1, 1 + numCols);
                 const rowData = cells.map(cell => {
-                    const text = cell.textContent.trim();
+                    let text = cell.textContent.trim();
+                    if (isCompareMode && text.includes('\n')) {
+                        text = text.replace(/\n/g, '');
+                    }
                     if (text.includes(',')) {
                        return `"${text.replace(/"/g, '""')}"`;
                     }
